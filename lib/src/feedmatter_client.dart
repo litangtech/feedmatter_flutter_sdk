@@ -5,9 +5,11 @@ import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import 'config.dart';
+import 'constants.dart';
 import 'enums/feedback_type.dart';
 import 'exceptions/feedmatter_exception.dart';
 import 'models/attachment.dart';
@@ -21,7 +23,7 @@ import 'models/project_config.dart';
 
 /// FeedMatter SDK 客户端
 class FeedMatterClient {
-  static const String _imageStyleSmall240 = '-small240.webp';
+  static const String _imageStyleSmall240 = '-small480.webp';
   static const String _imageStyleOriginal = '-original.webp';
 
   FeedMatterConfig? config;
@@ -150,6 +152,7 @@ class FeedMatterClient {
 
         final error = FeedMatterApiException(
           '网络请求失败',
+          statusCode: 0,
           code: 'NETWORK_ERROR',
           originalError: e,
         );
@@ -395,7 +398,7 @@ class FeedMatterClient {
     String feedbackId, {
     int page = 0,
     int size = 20,
-    String sort = 'created_asc',
+    String sort = CommentSort.createdAsc,
   }) async {
     final response = await _handleResponse(() => _request(
           'GET',
@@ -435,6 +438,41 @@ class FeedMatterClient {
     return PagedReplies.fromJson(response);
   }
 
+  Future<File> _compressFile(File file) async {
+    final lowerPath = file.path.toLowerCase();
+    if (lowerPath.endsWith(".jpg") ||
+        lowerPath.endsWith(".jpeg") ||
+        lowerPath.endsWith(".png") ||
+        lowerPath.endsWith(".bmp") ||
+        lowerPath.endsWith(".heic") ||
+        lowerPath.endsWith(".heif") ||
+        lowerPath.endsWith(".webp")) {
+      return _compressImage(file);
+    }
+    return file;
+  }
+
+  Future<File> _compressImage(File sourceFile) async {
+    final newPath = "${sourceFile.path}_compress.jpg";
+    final result = await FlutterImageCompress.compressAndGetFile(
+      sourceFile.absolute.path,
+      newPath,
+      quality: 70,
+      format: CompressFormat.jpeg,
+    );
+
+    if (result == null) {
+      return sourceFile;
+    }
+
+    final newFile = File(result.path);
+    if (config?.debug == true) {
+      print(
+          "FeedMatter compress image : before=${sourceFile.lengthSync()}  after=${newFile.lengthSync()}");
+    }
+    return newFile;
+  }
+
   /// 验证文件
   void _validateFile(File file, {int maxSize = 40 * 1024 * 1024}) {
     // 检查文件大小（默认最大40MB）
@@ -442,6 +480,7 @@ class FeedMatterClient {
     if (size > maxSize) {
       throw FeedMatterApiException(
         '文件大小超过限制',
+        statusCode: 0,
         code: 'FILE_TOO_LARGE',
         originalError: {'maxSize': maxSize, 'actualSize': size},
       );
@@ -451,6 +490,7 @@ class FeedMatterClient {
     if (!file.existsSync()) {
       throw FeedMatterApiException(
         '文件不存在',
+        statusCode: 0,
         code: 'FILE_NOT_FOUND',
       );
     }
@@ -476,43 +516,69 @@ class FeedMatterClient {
   /// 上传公开文件
   Future<String> uploadPublicFile(File file) async {
     _validateFile(file);
+    final compressFile = await _compressFile(file);
 
-    final fileName = _getSafeFileName(file.path);
-    final formData = FormData.fromMap({
-      'file': await MultipartFile.fromFile(
-        file.path,
-        filename: fileName,
-      ),
-    });
+    try {
+      final fileName = _getSafeFileName(file.path);
+      final formData = FormData.fromMap({
+        'file': await MultipartFile.fromFile(
+          compressFile.path,
+          filename: fileName,
+        ),
+      });
 
-    final response = await _handleResponse(() => _request(
-          'POST',
-          '/api/v2/upload/public',
-          data: formData,
-        ));
+      final response = await _handleResponse(() => _request(
+            'POST',
+            '/api/v2/upload/public',
+            data: formData,
+          ));
 
-    return response['url'];
+      return response['url'];
+    } finally {
+      if (compressFile.path != file.path) {
+        try {
+          compressFile.deleteSync();
+        } catch (e) {
+          if (config?.debug == true) {
+            print('Delete temp file failed: $e');
+          }
+        }
+      }
+    }
   }
 
   /// 上传私密文件
   Future<String> uploadPrivateFile(File file) async {
     _validateFile(file);
+    final compressFile = await _compressFile(file);
 
-    final fileName = _getSafeFileName(file.path);
-    final formData = FormData.fromMap({
-      'file': await MultipartFile.fromFile(
-        file.path,
-        filename: fileName,
-      ),
-    });
+    try {
+      final fileName = _getSafeFileName(file.path);
+      final formData = FormData.fromMap({
+        'file': await MultipartFile.fromFile(
+          compressFile.path,
+          filename: fileName,
+        ),
+      });
 
-    final response = await _handleResponse(() => _request(
-          'POST',
-          '/api/v2/upload/private',
-          data: formData,
-        ));
+      final response = await _handleResponse(() => _request(
+            'POST',
+            '/api/v2/upload/private',
+            data: formData,
+          ));
 
-    return response['key'];
+      return response['key'];
+    } finally {
+      if (compressFile.path != file.path) {
+        try {
+          compressFile.deleteSync();
+        } catch (e) {
+          if (config?.debug == true) {
+            print('Delete temp file failed: $e');
+          }
+        }
+      }
+    }
   }
 
   /// 获取私密文件的签名URL
@@ -629,7 +695,15 @@ class FeedMatterClient {
   }
 
   //根据传入的图片 url，获取缩略图 url
-  static String getImageThumbnailUrl(String url) => "$url$_imageStyleSmall240";
+  static String getImageThumbnailUrl(String url, {String style = _imageStyleSmall240}) {
+    final index = url.indexOf('?');
+    if (index != -1) {
+      final baseUrl = url.substring(0, index);
+      final query = url.substring(index + 1);
+      return '$baseUrl$style?$query';
+    }
+    return "$url$style";
+  }
 
-  static String getImageOriginalUrl(String url) => "$url$_imageStyleOriginal";
+  static String getImageOriginalUrl(String url) => getImageThumbnailUrl(url, style: _imageStyleOriginal);
 }

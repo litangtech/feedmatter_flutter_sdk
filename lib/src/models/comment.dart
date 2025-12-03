@@ -28,7 +28,19 @@ class Comment {
   final String? status;
   final String? feedbackId;
 
-  const Comment({
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  bool hasMoreSubComment = false;
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  int _subCommentCount = 0;
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  String? rootCommentId;
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  bool isLastSubComment = false;
+
+  Comment({
     required this.id,
     required this.content,
     required this.author,
@@ -48,4 +60,18 @@ class Comment {
 
   factory Comment.fromJson(Map<String, dynamic> json) => _$CommentFromJson(json);
   Map<String, dynamic> toJson() => _$CommentToJson(this);
+
+  void setSubCommentProps(String? rootCommentId, bool isLastSubComment) {
+    this.rootCommentId = rootCommentId;
+    this.isLastSubComment = isLastSubComment;
+  }
+
+  void setMainCommentProps(bool hasMoreSubComment, int subCommentCount) {
+    this.hasMoreSubComment = hasMoreSubComment;
+    _subCommentCount = subCommentCount;
+  }
+
+  int getSubCommentCount() => _subCommentCount;
+
+  bool isMainComment() => parentId == null || parentId!.isEmpty;
 }

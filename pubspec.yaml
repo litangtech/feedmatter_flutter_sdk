@@ -20,6 +20,7 @@ dependencies:
     git:
       url: "https://gitcode.com/openharmony-sig/flutter_plus_plugins.git"
       path: "packages/device_info_plus/device_info_plus"
+  flutter_image_compress: ^2.3.0
   crypto: ^3.0.3
 
 dev_dependencies:

@@ -721,7 +721,7 @@ MIT License
 
 ## ActionCard 链接
 
-FeedMatter SDK 支持通过特殊的 URL Schema 来展示富媒体卡片。格式如下：
+FeedMatter SDK 支持通过特殊的 URL Scheme 来展示富媒体卡片。格式如下：
 
 ```
 

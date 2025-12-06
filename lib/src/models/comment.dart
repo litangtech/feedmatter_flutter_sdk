@@ -14,6 +14,7 @@ class Comment {
   final Author author;
   final String? parentId;
   final String? parentUserName;
+  final String? parentUserId;
   @JsonKey(name: 'pinned', defaultValue: false)
   final bool pinned;
   @JsonKey(defaultValue: 0)
@@ -27,12 +28,25 @@ class Comment {
   final String? status;
   final String? feedbackId;
 
-  const Comment({
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  bool hasMoreSubComment = false;
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  int _subCommentCount = 0;
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  String? rootCommentId;
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  bool isLastSubComment = false;
+
+  Comment({
     required this.id,
     required this.content,
     required this.author,
     this.parentId,
     this.parentUserName,
+    this.parentUserId,
     this.pinned = false,
     this.replyCount = 0,
     this.totalReplyCount = 0,
@@ -46,4 +60,18 @@ class Comment {
 
   factory Comment.fromJson(Map<String, dynamic> json) => _$CommentFromJson(json);
   Map<String, dynamic> toJson() => _$CommentToJson(this);
+
+  void setSubCommentProps(String? rootCommentId, bool isLastSubComment) {
+    this.rootCommentId = rootCommentId;
+    this.isLastSubComment = isLastSubComment;
+  }
+
+  void setMainCommentProps(bool hasMoreSubComment, int subCommentCount) {
+    this.hasMoreSubComment = hasMoreSubComment;
+    _subCommentCount = subCommentCount;
+  }
+
+  int getSubCommentCount() => _subCommentCount;
+
+  bool isMainComment() => parentId == null || parentId!.isEmpty;
 }

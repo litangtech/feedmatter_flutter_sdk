@@ -8,6 +8,7 @@ export 'src/models/client_info.dart';
 export 'src/models/comment.dart';
 export 'src/models/feedback.dart';
 export 'src/models/main_comment_with_replies.dart';
+export 'src/models/page.dart';
 export 'src/models/paged_replies.dart';
 export 'src/enums/feedback_type.dart';
 export 'src/enums/file_type.dart';

@@ -15,6 +15,7 @@ import 'exceptions/feedmatter_exception.dart';
 import 'models/attachment.dart';
 import 'models/client_info.dart';
 import 'models/comment.dart';
+import 'models/faq_list_response.dart';
 import 'models/feedback.dart';
 import 'models/main_comment_with_replies.dart';
 import 'models/page.dart';
@@ -694,8 +695,26 @@ class FeedMatterClient {
     );
   }
 
+  /// 获取常见问题列表（带版本检查）
+  ///
+  /// [version] 客户端缓存的版本号，首次传 "0"
+  /// 若服务端版本与 [version] 一致，返回的 items 为空列表
+  Future<FaqListResponse> getFaqList({String version = '0'}) async {
+    final response = await _handleResponse(
+      () => _request(
+        'GET',
+        '/api/v1/faq',
+        queryParameters: {
+          'version': version,
+        },
+      ),
+    );
+    return FaqListResponse.fromJson(response);
+  }
+
   //根据传入的图片 url，获取缩略图 url
-  static String getImageThumbnailUrl(String url, {String style = _imageStyleSmall240}) {
+  static String getImageThumbnailUrl(String url,
+      {String style = _imageStyleSmall240}) {
     final index = url.indexOf('?');
     if (index != -1) {
       final baseUrl = url.substring(0, index);
@@ -705,5 +724,6 @@ class FeedMatterClient {
     return "$url$style";
   }
 
-  static String getImageOriginalUrl(String url) => getImageThumbnailUrl(url, style: _imageStyleOriginal);
+  static String getImageOriginalUrl(String url) =>
+      getImageThumbnailUrl(url, style: _imageStyleOriginal);
 }

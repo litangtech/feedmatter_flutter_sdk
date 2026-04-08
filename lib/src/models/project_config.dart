@@ -40,6 +40,9 @@ class ProjectConfig {
   /// 最大上传文件大小
   final int maxUploadFileSize;
 
+  /// 是否启用常见问题
+  final bool faqEnabled;
+
   /// 创建时间
   final String? createdAt;
 
@@ -57,8 +60,9 @@ class ProjectConfig {
     this.guestCommentEnabled = false,
     this.feedbackMaxContentLength = 3000,
     this.commentMaxContentLength = 3000,
-    this.maxAttachments = 8,
+    this.maxAttachments = 10,
     this.maxUploadFileSize = 10 * 1024 * 1024,
+    this.faqEnabled = false,
     this.createdAt,
     this.updatedAt,
   });
@@ -83,6 +87,7 @@ class ProjectConfig {
         'commentMaxContentLength: $commentMaxContentLength, '
         'maxAttachments: $maxAttachments, '
         'maxUploadFileSize: $maxUploadFileSize, '
+        'faqEnabled: $faqEnabled, '
         'createdAt: $createdAt, '
         'updatedAt: $updatedAt)';
   }
@@ -97,10 +102,7 @@ class ProjectConfig {
       commentAttachmentEnabled: true,
       guestFeedbackEnabled: false,
       guestCommentEnabled: false,
-
-      /// 附件最大数量
-      maxAttachments: 8,
-      //目前写死，服务器限制了上传文件最大为10M
+      maxAttachments: 10,
       maxUploadFileSize: 10 * 1024 * 1024,
     );
   }

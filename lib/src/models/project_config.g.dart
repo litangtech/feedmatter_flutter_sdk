@@ -22,9 +22,10 @@ ProjectConfig _$ProjectConfigFromJson(Map<String, dynamic> json) =>
           (json['feedbackMaxContentLength'] as num?)?.toInt() ?? 3000,
       commentMaxContentLength:
           (json['commentMaxContentLength'] as num?)?.toInt() ?? 3000,
-      maxAttachments: (json['maxAttachments'] as num?)?.toInt() ?? 8,
+      maxAttachments: (json['maxAttachments'] as num?)?.toInt() ?? 10,
       maxUploadFileSize:
           (json['maxUploadFileSize'] as num?)?.toInt() ?? 10 * 1024 * 1024,
+      faqEnabled: json['faqEnabled'] as bool? ?? true,
       createdAt: json['createdAt'] as String?,
       updatedAt: json['updatedAt'] as String?,
     );
@@ -43,6 +44,7 @@ Map<String, dynamic> _$ProjectConfigToJson(ProjectConfig instance) =>
       'commentMaxContentLength': instance.commentMaxContentLength,
       'maxAttachments': instance.maxAttachments,
       'maxUploadFileSize': instance.maxUploadFileSize,
+      'faqEnabled': instance.faqEnabled,
       'createdAt': instance.createdAt,
       'updatedAt': instance.updatedAt,
     };

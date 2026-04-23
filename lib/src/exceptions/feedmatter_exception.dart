@@ -1,8 +1,15 @@
+/// 常用错误码
+class FeedMatterErrorCode {
+  static const String userBanned = 'USER_BANNED';
+}
+
 /// FeedMatter SDK 异常基类
 class FeedMatterException implements Exception {
   final String message;
   final String? code;
   final dynamic originalError;
+
+  bool get isUserBanned => code == FeedMatterErrorCode.userBanned;
 
   FeedMatterException(this.message, {this.code, this.originalError});
 

@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -178,10 +179,10 @@ class FeedMatterClient {
 
   String _getAppType() {
     var value = Platform.operatingSystem.toUpperCase();
-    if (value == 'OHOS') {
-      return 'HARMONY';
+    if (Platform.operatingSystem == 'ohos') {
+      return 'Harmony';
     }
-    return value;
+    return value.toUpperCase();
   }
 
   /// 获取设备和应用信息
@@ -214,6 +215,18 @@ class FeedMatterClient {
       deviceSysVersion = macOsInfo.osRelease;
       deviceSysVersionInt = macOsInfo.majorVersion.toString();
     } else if (Platform.operatingSystem == 'ohos') {
+      //文档参考
+      //https://gitcode.com/CPF-Flutter/flutter_plus_plugins/tree/master/packages/device_info_plus/device_info_plus、
+      //举例：
+      //{manufacture: HUAWEI, softwareModel: HOP-AL10, featureVersion: 0, productSeries: HOP, brand: HUAWEI, seniorVersion: 1, buildType: default, buildVersion: 120, distributionOSVersion: 6.1.0, securityPatchTag: 2026/05/01, bootloaderVersion: bootloader, versionId: phone/HUAWEI/HUAWEI/HOP/OpenHarmony-6.1.0.120/HOP-AL10/HOP-AL10/23/6.1.1.120/default, distributionOSName: HarmonyOS, isPhysicalDevice: true, buildUser: default, distributionOSReleaseType: Release, buildTime: 1778140412018, osReleaseType: Release, incrementalVersion: 6.1.1.120, buildRootHash: default, majorVersion: 6, hardwareModel: HL1DTHM, abiList: arm64-v8a, distributionOSApiVersion: 60100, marketName: HUAWEI Pura X Max 典藏版, firstApiVersion: 1, deviceType: phone, odid: 883b7319-457d-1967-78c3-ba397dcc8e29, displayVersion: HOP-AL10 6.1.0.120(SP16C00E120R4P4), buildHost: default, sdkApiVersion: 23, productModel: HOP-AL10, osFullName: OpenHarmony-6.1.0.120}
+      final ohosInfo = await deviceInfoPlugin.ohosInfo;
+      deviceModel = ohosInfo.productModel;
+      deviceBrand = ohosInfo.brand;
+      deviceSysVersion = ohosInfo.incrementalVersion;
+      deviceSysVersionInt = '${ohosInfo.sdkApiVersion}';
+      if (kDebugMode) {
+        print("FeedMatter ohosInfo ${ohosInfo.data}");
+      }
     } else if (Platform.isWindows) {
       final winInfo = await deviceInfoPlugin.windowsInfo;
       deviceModel = winInfo.productName;
@@ -227,7 +240,7 @@ class FeedMatterClient {
       deviceSysVersionInt = linuxInfo.versionCodename;
     }
 
-    return ClientInfo(
+    var result = ClientInfo(
       appVersionCode: int.tryParse(packageInfo.buildNumber) ?? 0,
       appVersionName: packageInfo.version,
       appPackage: packageInfo.packageName,
@@ -238,6 +251,10 @@ class FeedMatterClient {
       deviceSysVersion: deviceSysVersion,
       deviceSysVersionInt: deviceSysVersionInt,
     );
+    if (kDebugMode) {
+      print("FeedMatter clientInfo:${result.toJson()}");
+    }
+    return result;
   }
 
   Map<String, String> get _headers {

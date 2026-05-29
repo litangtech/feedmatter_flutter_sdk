@@ -213,6 +213,18 @@ class FeedMatterClient {
       deviceBrand = 'Apple';
       deviceSysVersion = macOsInfo.osRelease;
       deviceSysVersionInt = macOsInfo.majorVersion.toString();
+    } else if (Platform.operatingSystem == 'ohos') {
+    } else if (Platform.isWindows) {
+      final winInfo = await deviceInfoPlugin.windowsInfo;
+      deviceModel = winInfo.productName;
+      deviceSysVersion = '${winInfo.displayVersion} ${winInfo.csdVersion}';
+      deviceSysVersionInt = '${winInfo.majorVersion}';
+    } else if (Platform.isLinux) {
+      final linuxInfo = await deviceInfoPlugin.linuxInfo;
+      deviceModel = linuxInfo.prettyName;
+      deviceBrand = linuxInfo.name;
+      deviceSysVersion = linuxInfo.version;
+      deviceSysVersionInt = linuxInfo.versionCodename;
     }
 
     return ClientInfo(

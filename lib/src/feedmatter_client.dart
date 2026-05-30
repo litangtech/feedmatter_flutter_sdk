@@ -178,8 +178,8 @@ class FeedMatterClient {
 
   String _getAppType() {
     var value = Platform.operatingSystem.toUpperCase();
-    if (value == 'OHOS') {
-      return 'HARMONY';
+    if (Platform.operatingSystem == 'ohos') {
+      return 'Harmony'.toUpperCase();
     }
     return value;
   }

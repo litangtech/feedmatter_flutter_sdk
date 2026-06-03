@@ -27,10 +27,10 @@ Map<String, dynamic> _$AttachmentToJson(Attachment instance) =>
     };
 
 const _$FileTypeEnumMap = {
-  FileType.img: 'IMG',
-  FileType.vid: 'VID',
-  FileType.doc: 'DOC',
-  FileType.txt: 'TXT',
-  FileType.fref: 'FREF',
-  FileType.cref: 'CREF',
+  FileType.IMG: 'IMG',
+  FileType.VID: 'VID',
+  FileType.DOC: 'DOC',
+  FileType.TXT: 'TXT',
+  FileType.FREF: 'FREF',
+  FileType.CREF: 'CREF',
 };

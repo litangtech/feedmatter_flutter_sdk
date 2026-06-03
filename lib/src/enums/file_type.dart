@@ -1,25 +1,27 @@
+// ignore_for_file: constant_identifier_names
+
 import 'package:json_annotation/json_annotation.dart';
 
 /// 文件类型
 @JsonEnum(valueField: 'value')
 enum FileType {
   /// 图片
-  img('IMG'),
+  IMG('IMG'),
 
   /// 视频
-  vid('VID'),
+  VID('VID'),
 
   /// 文档
-  doc('DOC'),
+  DOC('DOC'),
 
   /// 文本
-  txt('TXT'),
+  TXT('TXT'),
 
   /// 反馈引用
-  fref('FREF'),
+  FREF('FREF'),
 
   /// 评论引用
-  cref('CREF');
+  CREF('CREF');
 
   final String value;
   const FileType(this.value);

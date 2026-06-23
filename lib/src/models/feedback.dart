@@ -55,7 +55,8 @@ class Feedback {
     this.attachments,
   });
 
-  factory Feedback.fromJson(Map<String, dynamic> json) => _$FeedbackFromJson(json);
+  factory Feedback.fromJson(Map<String, dynamic> json) =>
+      _$FeedbackFromJson(json);
   Map<String, dynamic> toJson() => _$FeedbackToJson(this);
 
   Feedback copyWith({

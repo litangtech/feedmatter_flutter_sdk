@@ -53,4 +53,3 @@ class Page<T> {
   Map<String, dynamic> toJson(Object Function(T value) toJsonT) =>
       _$PageToJson(this, toJsonT);
 }
-

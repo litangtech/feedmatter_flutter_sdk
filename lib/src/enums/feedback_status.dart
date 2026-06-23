@@ -13,4 +13,4 @@ enum FeedbackStatus {
   const FeedbackStatus(this.value);
 
   bool get isPublic => this != hidden && this != deleted && this != pending;
-} 
+}

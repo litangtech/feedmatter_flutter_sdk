@@ -28,7 +28,7 @@ class FeedMatterConfig {
 
   @override
   String toString() {
-    return 'FeedMatterConfig(baseUrl: $baseUrl, apiKey: $apiKey, apiSecret: $apiSecret, appMarket: $appMarket, debug: $debug, timeout: $timeout)';
+    return 'FeedMatterConfig(baseUrl: $baseUrl, apiKey: $apiKey, apiSecret: ****, appMarket: $appMarket, debug: $debug, timeout: $timeout)';
   }
 }
 

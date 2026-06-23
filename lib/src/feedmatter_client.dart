@@ -580,7 +580,7 @@ class FeedMatterClient {
             data: formData,
           ));
 
-      return response['key'];
+      return response['url'];
     } finally {
       if (compressFile.path != file.path) {
         try {

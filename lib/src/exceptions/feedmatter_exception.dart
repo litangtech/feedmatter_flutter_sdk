@@ -14,7 +14,8 @@ class FeedMatterException implements Exception {
   FeedMatterException(this.message, {this.code, this.originalError});
 
   @override
-  String toString() => 'FeedMatterException: $message${code != null ? ' (code: $code)' : ''}';
+  String toString() =>
+      'FeedMatterException: $message${code != null ? ' (code: $code)' : ''}';
 }
 
 /// API 请求异常
@@ -29,12 +30,14 @@ class FeedMatterApiException extends FeedMatterException {
   }) : super(message, code: code, originalError: originalError);
 
   @override
-  String toString() => 'FeedMatterApiException: $message (status: $statusCode${code != null ? ', code: $code' : ''})';
+  String toString() =>
+      'FeedMatterApiException: $message (status: $statusCode${code != null ? ', code: $code' : ''})';
 }
 
 /// 配置错误异常
 class FeedMatterConfigException extends FeedMatterException {
-  FeedMatterConfigException(String message, {String? code, dynamic originalError})
+  FeedMatterConfigException(String message,
+      {String? code, dynamic originalError})
       : super(message, code: code, originalError: originalError);
 }
 
@@ -42,4 +45,4 @@ class FeedMatterConfigException extends FeedMatterException {
 class FeedMatterAuthException extends FeedMatterException {
   FeedMatterAuthException(String message, {String? code, dynamic originalError})
       : super(message, code: code, originalError: originalError);
-} 
+}

@@ -14,8 +14,8 @@ class ClientInfo {
   //设备信息
   final String? deviceModel;
   final String? deviceBrand;
-  final String? deviceSysVersion;//版本名称
-  final String? deviceSysVersionInt;//版本号
+  final String? deviceSysVersion; //版本名称
+  final String? deviceSysVersionInt; //版本号
 
   const ClientInfo({
     required this.appVersionCode,
@@ -29,6 +29,7 @@ class ClientInfo {
     this.deviceSysVersionInt,
   });
 
-  factory ClientInfo.fromJson(Map<String, dynamic> json) => _$ClientInfoFromJson(json);
+  factory ClientInfo.fromJson(Map<String, dynamic> json) =>
+      _$ClientInfoFromJson(json);
   Map<String, dynamic> toJson() => _$ClientInfoToJson(this);
-} 
+}

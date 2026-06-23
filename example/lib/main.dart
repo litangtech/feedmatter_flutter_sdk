@@ -42,7 +42,7 @@ class _MyHomePageState extends State<MyHomePage> {
     client = feedmatter.FeedMatterClient.instance;
     client.init(
       const feedmatter.FeedMatterConfig(
-        baseUrl: 'https://fmapi.feedmatter.com',
+        baseUrl: 'https://fmapi.litangkj.com',
         apiKey: 'your-api-key',
         timeout: 30,
         debug: true,

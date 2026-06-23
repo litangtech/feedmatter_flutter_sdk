@@ -113,7 +113,7 @@ final client = feedmatter.FeedMatterClient.instance;
 // 初始化配置
 client.init(
   feedmatter.FeedMatterConfig(
-    baseUrl: 'https://api.feedmatter.com',  // API 地址
+    baseUrl: 'https://fmapi.litangkj.com',  // API 地址
     apiKey: 'your-api-key',                 // 项目 API Key
     apiSecret: 'your-api-secret',           // 项目 API Secret
     appMarket: 'appstore',                  // 应用渠道，如 appstore/googleplay/harmony
@@ -154,7 +154,7 @@ client.init(
 Future<void> initFeedMatter(AppUser? user) async {
   FeedMatterClient.instance.init(
     FeedMatterConfig(
-      baseUrl: 'https://api.feedmatter.com',
+      baseUrl: 'https://fmapi.litangkj.com',
       apiKey: 'your-api-key',
       apiSecret: 'your-api-secret',
       appMarket: detectAppMarket(), // 例如 appstore / harmony / xiaomi

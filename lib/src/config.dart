@@ -18,7 +18,7 @@ class FeedMatterConfig {
   final int timeout;
 
   const FeedMatterConfig({
-    this.baseUrl = 'https://fmapi.litangkj.com',
+    this.baseUrl = 'https://api.feedmatter.com',
     required this.apiKey,
     required this.apiSecret,
     required this.appMarket,

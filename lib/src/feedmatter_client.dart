@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:crypto/crypto.dart';
@@ -61,8 +62,8 @@ class FeedMatterClient {
 
     if (config.debug) {
       //打印配置信息
-      print('FeedMatterConfig: $config');
-      print('FeedMatterUser: $_user');
+      _debugLog('FeedMatterConfig: $config');
+      _debugLog('FeedMatterUser: $_user');
     }
   }
 
@@ -87,8 +88,12 @@ class FeedMatterClient {
 
     if (config!.debug) {
       dio.interceptors.add(LogInterceptor(
+        requestHeader: false,
+        responseHeader: false,
         requestBody: true,
         responseBody: true,
+        logPrint: (object) =>
+            developer.log(object.toString(), name: 'FeedMatter'),
       ));
     }
     // 添加错误处理拦截器
@@ -115,19 +120,20 @@ class FeedMatterClient {
             }
           } catch (extractionError) {
             if (config?.debug ?? false) {
-              print('Error extracting error details: $extractionError');
+              _debugLog('Error extracting error details: $extractionError');
             }
             errorBody = {'message': message, 'originalError': e.toString()};
           }
 
           if (config?.debug ?? false) {
-            print('FeedMatter API Error:');
-            print('Status Code: ${response.statusCode}');
-            print('Error Message: $message');
-            print('Headers: ${response.requestOptions.headers}');
-            print('URL: ${response.requestOptions.uri}');
-            print('Method: ${response.requestOptions.method}');
-            print('Error Body: $errorBody');
+            _debugLog('FeedMatter API Error:');
+            _debugLog('Status Code: ${response.statusCode}');
+            _debugLog('Error Message: $message');
+            _debugLog(
+                'Headers: ${_redactHeaders(response.requestOptions.headers)}');
+            _debugLog('URL: ${response.requestOptions.uri}');
+            _debugLog('Method: ${response.requestOptions.method}');
+            _debugLog('Error Body: $errorBody');
           }
 
           final error = response.statusCode == 401 || response.statusCode == 403
@@ -480,7 +486,7 @@ class FeedMatterClient {
 
     final newFile = File(result.path);
     if (config?.debug == true) {
-      print(
+      _debugLog(
           "FeedMatter compress image : before=${sourceFile.lengthSync()}  after=${newFile.lengthSync()}");
     }
     return newFile;
@@ -553,7 +559,7 @@ class FeedMatterClient {
           compressFile.deleteSync();
         } catch (e) {
           if (config?.debug == true) {
-            print('Delete temp file failed: $e');
+            _debugLog('Delete temp file failed: $e');
           }
         }
       }
@@ -587,7 +593,7 @@ class FeedMatterClient {
           compressFile.deleteSync();
         } catch (e) {
           if (config?.debug == true) {
-            print('Delete temp file failed: $e');
+            _debugLog('Delete temp file failed: $e');
           }
         }
       }
@@ -652,13 +658,42 @@ class FeedMatterClient {
         '$method\n$normalizedPath\n$timestamp\n$paramsJson';
 
     if (config?.debug == true) {
-      print('String to sign: $stringToSign');
+      _debugLog('String to sign: $stringToSign');
     }
 
     // 使用 apiSecret 进行 HMAC-SHA256 签名
     final hmac = Hmac(sha256, utf8.encode(config!.apiSecret));
     final digest = hmac.convert(utf8.encode(stringToSign));
     return base64.encode(digest.bytes);
+  }
+
+  Map<String, dynamic> _redactHeaders(Map<String, dynamic> headers) {
+    return headers.map((key, value) {
+      final lowerKey = key.toLowerCase();
+      if (lowerKey == 'x-api-key' ||
+          lowerKey == 'x-signature' ||
+          lowerKey == 'authorization') {
+        return MapEntry(key, _maskHeaderValue(value));
+      }
+      return MapEntry(key, value);
+    });
+  }
+
+  String _maskHeaderValue(dynamic value) {
+    final text = value?.toString() ?? '';
+    if (text.isEmpty) {
+      return '';
+    }
+    if (text.length <= 8) {
+      return '****';
+    }
+    return '${text.substring(0, 4)}****${text.substring(text.length - 4)}';
+  }
+
+  void _debugLog(String message) {
+    if (config?.debug == true) {
+      developer.log(message, name: 'FeedMatter');
+    }
   }
 
   Future<Response> _request(
@@ -690,10 +725,10 @@ class FeedMatterClient {
     requestHeaders['X-Signature'] = signature;
 
     if (config?.debug == true) {
-      print('Request headers: $requestHeaders');
-      print('Request sign params: $signParams');
-      print('Request params: $data');
-      print('Timestamp: $timestamp');
+      _debugLog('Request headers: ${_redactHeaders(requestHeaders)}');
+      _debugLog('Request sign params: $signParams');
+      _debugLog('Request params: $data');
+      _debugLog('Timestamp: $timestamp');
     }
 
     return getDio().request(

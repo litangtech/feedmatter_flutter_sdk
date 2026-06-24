@@ -1,3 +1,8 @@
+## 1.0.5
+
+* 📝 完善常见问题 FAQ 文档，补充 `getFaqList()` 用法、版本缓存建议和 FAQ 数据结构说明。
+* 📝 更新 README 接入示例版本号，准备发布包含 FAQ 文档增强的新版 SDK。
+
 ## 1.0.4
 
 * 📝 完善 `example` 示例项目，补齐 Android、iOS、macOS、Windows、Linux 多端工程。

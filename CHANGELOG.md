@@ -3,6 +3,7 @@
 * 📝 更新仓库地址为 `litangtech/feedmatter_flutter_sdk`。
 * 🔒 加强 SDK debug 日志脱敏，避免输出敏感请求头。
 * 📝 保持默认 API 地址指向当前线上服务域名。
+* 📝 声明 pub.dev 支持 Android、iOS、macOS、Windows、Linux 平台。
 
 ## 1.0.2
 

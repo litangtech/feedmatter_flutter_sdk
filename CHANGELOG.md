@@ -1,8 +1,16 @@
+## 1.0.4
+
+* 📝 完善 `example` 示例项目，补齐 Android、iOS、macOS、Windows、Linux 多端工程。
+* 🧩 新增可复制的反馈 UI 示例，覆盖反馈列表、提交反馈、反馈详情、评论、楼中楼回复和点赞流程。
+* 📝 补充 example 接入文档，说明测试 `apiKey` / `apiSecret`、运行方式和业务项目复制接入步骤。
+* 🔧 优化 example 平台配置，包括 Android 网络权限、macOS 网络权限、包名和应用显示名称。
+
 ## 1.0.3
 
 * 📝 更新仓库地址为 `litangtech/feedmatter_flutter_sdk`。
 * 🔒 加强 SDK debug 日志脱敏，避免输出敏感请求头。
 * 📝 保持默认 API 地址指向当前线上服务域名。
+* 📝 声明 pub.dev 支持 Android、iOS、macOS、Windows、Linux 平台。
 
 ## 1.0.2
 

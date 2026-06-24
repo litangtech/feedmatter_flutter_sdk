@@ -1,11 +1,18 @@
 name: feedmatter_flutter_sdk
 description: Flutter SDK for FeedMatter API, providing feedback collection and management features.
-version: 1.0.3
+version: 1.0.4
 homepage: https://github.com/litangtech/feedmatter_flutter_sdk
 
 environment:
   sdk: '>=2.19.6 <4.0.0'
   flutter: ">=1.17.0"
+
+platforms:
+  android:
+  ios:
+  linux:
+  macos:
+  windows:
 
 dependencies:
   flutter:

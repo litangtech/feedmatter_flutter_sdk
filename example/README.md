@@ -74,9 +74,4 @@ lib/feedmatter_ui/
 
 然后在业务 App 启动或用户信息加载完成后，参考 `lib/main.dart` 初始化 `FeedMatterClient`。
 
-附件上传按钮目前只做了入口预留。业务项目接入文件选择器后，可以调用：
-
-- `uploadPublicFile()`
-- `uploadPrivateFile()`
-
-上传完成后再把附件 URL 传给反馈或评论接口。
+附件上传按钮目前只做了入口预留。业务项目接入文件选择器后，可以调用 `uploadPublicFile()`，上传完成后再把附件 URL 传给反馈或评论接口。

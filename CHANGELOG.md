@@ -1,3 +1,8 @@
+## 1.0.6
+
+* ⚠️ 移除 `uploadPrivateFile()` 和 `getSignedUrl()`。附件统一使用 `uploadPublicFile()` 公开上传。
+* 📝 更新 README 和 example 文档，明确附件只支持公开 URL。
+
 ## 1.0.5
 
 * 📝 完善常见问题 FAQ 文档，补充 `getFaqList()` 用法、版本缓存建议和 FAQ 数据结构说明。

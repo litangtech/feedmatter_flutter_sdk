@@ -573,7 +573,11 @@ try {
 | `comment.status_changed` | 评论状态变化 |
 | `comment.deleted` | 评论删除 |
 | `comment.pinned` / `comment.unpinned` | 评论置顶 / 取消置顶 |
+| `store_integration.sync_completed` | 商店评论渠道同步完成（需在渠道设置中订阅） |
+| `store_integration.sync_failed` | 商店评论渠道同步失败（需在渠道设置中订阅） |
 | `system.test` | 管理后台测试回调 |
+
+完整 Webhook 集成说明（事件列表、签名、JSON Schema、投递日志）：见仓库 [`docs/callback-integration-guide.md`](https://github.com/litangtech/FeedMatter/blob/main/docs/callback-integration-guide.md)。
 
 回调请求格式：
 
@@ -589,6 +593,7 @@ payload 示例：
 
 ```json
 {
+  "callbackVersion": 1,
   "eventId": "0f7d2b43-7c21-4b5d-9fd6-4a2b01f4b8e6",
   "projectId": "project-id",
   "eventType": "feedback.created",

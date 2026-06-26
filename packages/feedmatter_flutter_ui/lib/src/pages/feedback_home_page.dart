@@ -56,6 +56,7 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage>
 
   void _onTabChanged() {
     if (_tabController.indexIsChanging) return;
+    setState(() {});
     _loadFeedbacks(forMine: _tabController.index == 1);
   }
 
@@ -94,7 +95,10 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage>
       }
     });
     try {
-      final keyword = _keywordController.text.trim();
+      final trimmedKeyword = _keywordController.text.trim();
+      final keyword = forMine
+          ? null
+          : (trimmedKeyword.isEmpty ? null : trimmedKeyword);
       final feedbacks = forMine
           ? await fm.FeedMatterClient.instance.getMyFeedbacks(
               size: 30,
@@ -256,19 +260,20 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage>
             controller: _tabController,
             onTap: (index) => _tabController.animateTo(index),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: FeedMatterSearchBar(
-              controller: _keywordController,
-              onSubmitted: (_) => _reloadAllTabs(),
-              onChanged: (_) => setState(() {}),
-              onClear: () {
-                _keywordController.clear();
-                setState(() {});
-                _reloadAllTabs();
-              },
+          if (_tabController.index == 0)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: FeedMatterSearchBar(
+                controller: _keywordController,
+                onSubmitted: (_) => _loadFeedbacks(forMine: false),
+                onChanged: (_) => setState(() {}),
+                onClear: () {
+                  _keywordController.clear();
+                  setState(() {});
+                  _loadFeedbacks(forMine: false);
+                },
+              ),
             ),
-          ),
           Expanded(
             child: TabBarView(
               controller: _tabController,

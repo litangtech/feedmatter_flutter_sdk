@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../feedmatter_ui_helpers.dart';
 import '../feedmatter_ui_options.dart';
+import '../theme/feedmatter_theme_scope.dart';
 import '../theme/feedmatter_ui_theme.dart';
 import '../widgets/feedmatter_help_tips_sheet.dart';
 import '../widgets/feedmatter_submit_fab.dart';
@@ -91,6 +92,13 @@ class _FeedMatterFeedbackEntryState extends State<FeedMatterFeedbackEntry> {
 
   @override
   Widget build(BuildContext context) {
+    return FeedMatterThemeScope(
+      options: widget.options.theme,
+      child: _buildContent(context),
+    );
+  }
+
+  Widget _buildContent(BuildContext context) {
     final theme = FeedMatterUiTheme.of(context);
 
     if (_loadingConfig) {
@@ -104,7 +112,7 @@ class _FeedMatterFeedbackEntryState extends State<FeedMatterFeedbackEntry> {
     return Scaffold(
       backgroundColor: theme.pageBackground,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: theme.surfaceColor,
         foregroundColor: theme.textPrimary,
         elevation: 0,
         scrolledUnderElevation: 0,

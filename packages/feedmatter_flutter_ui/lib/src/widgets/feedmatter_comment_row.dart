@@ -85,7 +85,7 @@ class FeedMatterCommentRow extends StatelessWidget {
     return Column(
       children: [
         Material(
-          color: Colors.white,
+          color: theme.surfaceColor,
           child: InkWell(
             onTap: onTap,
             child: Padding(

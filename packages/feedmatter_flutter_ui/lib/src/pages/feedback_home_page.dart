@@ -141,7 +141,7 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage>
     return Scaffold(
       backgroundColor: theme.pageBackground,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: theme.surfaceColor,
         foregroundColor: theme.textPrimary,
         elevation: 0,
         scrolledUnderElevation: 0,

@@ -1069,13 +1069,36 @@ packages/feedmatter_flutter_ui/lib/
 | `showProjectConfigDebugPanel` | 是否展示项目配置调试面板（示例 App 可开启） |
 | `platformFilter` | 按 `FaqItem.platforms` 过滤 FAQ |
 | `onFaqUrlTap` | FAQ 外链点击回调（避免 UI 包强依赖 url_launcher） |
+| `theme` | UI 主题配置（浅色/深色/跟随系统、主题色） |
+
+### 主题定制
+
+FeedMatter UI 支持浅色、深色、跟随系统三种模式，并可通过 `seedColor` 与宿主 App 主色保持一致。`FeedMatterFeedbackEntry` 会自动包裹主题，无需修改宿主 `MaterialApp`。
+
+```dart
+FeedMatterFeedbackEntry(
+  options: FeedMatterUiOptions(
+    theme: FeedMatterThemeOptions(
+      mode: FeedMatterThemeMode.system, // light | dark | system
+      seedColor: Color(0xFF6750A4),     // 可选，不传则继承宿主 Theme 的 primary
+    ),
+  ),
+)
+```
+
+| 字段 | 说明 |
+| ---- | ---- |
+| `mode` | 主题模式：`light` 浅色、`dark` 深色、`system` 跟随系统，默认 `system` |
+| `seedColor` | 主题色种子，用于生成 ColorScheme；为 `null` 时继承宿主 `Theme.of(context).colorScheme.primary` |
+
+若单独使用 `FeedMatterHomePage` 等页面（不经过 `FeedMatterFeedbackEntry`），请自行用 `FeedMatterThemeScope` 包裹，或在宿主 `MaterialApp` 上使用 `buildFeedMatterLightTheme()` / `buildFeedMatterDarkTheme()`。
 
 接入建议：
 
 1. 在业务 App 启动或用户信息加载完成后，参考 `example/lib/main.dart` 初始化 `FeedMatterClient`。
 2. 替换 `apiKey`、`apiSecret`、`appMarket` 和 `FeedMatterUser`。
 3. 使用 `FeedMatterFeedbackEntry` 或单独页面（`FeedMatterHomePage`、`FeedMatterFaqPage` 等）。
-4. 通过 `ThemeData` 统一调整 Material 样式；需要深度定制时可单独使用卡片组件并自建页面。
+4. 通过 `FeedMatterThemeOptions` 传入主题模式与主题色，使反馈 UI 与宿主 App 风格一致；需要深度定制时可单独使用卡片组件并自建页面。
 5. 附件上传：在 `onPickAttachments` 中接入文件选择器，调用 `uploadPublicFile()` / `uploadPrivateFile()` 后返回 `Attachment`。
 
 ## ActionCard 链接

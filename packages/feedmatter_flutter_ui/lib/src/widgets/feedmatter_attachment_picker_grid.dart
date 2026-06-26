@@ -124,7 +124,7 @@ class _AddTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
+      color: theme.surfaceColor,
       borderRadius: BorderRadius.circular(8),
       child: InkWell(
         onTap: onTap,

@@ -23,7 +23,7 @@ class FeedMatterBottomPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = FeedMatterUiTheme.of(context);
-    final bg = backgroundColor ?? Colors.white;
+    final bg = backgroundColor ?? theme.surfaceColor;
     final fg = foregroundColor ?? theme.textPrimary;
     final enabled = onPressed != null;
 

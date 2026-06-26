@@ -125,7 +125,7 @@ class _FeedMatterFaqPageState extends State<FeedMatterFaqPage> {
     return Scaffold(
       backgroundColor: theme.pageBackground,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: theme.surfaceColor,
         foregroundColor: theme.textPrimary,
         elevation: 0,
         scrolledUnderElevation: 0,
@@ -228,7 +228,7 @@ class _FaqListCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.surfaceColor,
         borderRadius: BorderRadius.circular(theme.cardRadius),
       ),
       clipBehavior: Clip.antiAlias,
@@ -306,7 +306,7 @@ class _FaqSubmitFooter extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.surfaceColor,
         border: Border(top: BorderSide(color: theme.dividerColor)),
       ),
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),

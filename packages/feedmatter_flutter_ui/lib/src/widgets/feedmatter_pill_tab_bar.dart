@@ -19,7 +19,7 @@ class FeedMatterPillTabBar extends StatelessWidget {
     final theme = FeedMatterUiTheme.of(context);
 
     return Container(
-      color: Colors.white,
+      color: theme.surfaceColor,
       child: Column(
         children: [
           AnimatedBuilder(

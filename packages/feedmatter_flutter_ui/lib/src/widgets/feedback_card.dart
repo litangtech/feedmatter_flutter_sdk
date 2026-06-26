@@ -35,12 +35,12 @@ class FeedMatterFeedbackCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.surfaceColor,
         borderRadius: BorderRadius.circular(theme.cardRadius),
       ),
       clipBehavior: Clip.antiAlias,
       child: Material(
-        color: Colors.white,
+        color: theme.surfaceColor,
         child: InkWell(
           onTap: onTap,
           child: Padding(

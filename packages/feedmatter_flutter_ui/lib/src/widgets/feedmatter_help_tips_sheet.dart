@@ -32,9 +32,10 @@ const _helpTips = [
 ];
 
 void showFeedMatterHelpTipsSheet(BuildContext context) {
+  final theme = FeedMatterUiTheme.of(context);
   showModalBottomSheet<void>(
     context: context,
-    backgroundColor: Colors.white,
+    backgroundColor: theme.surfaceColor,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
     ),

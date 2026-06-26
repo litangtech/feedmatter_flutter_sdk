@@ -68,6 +68,8 @@ feedmatter.FeedMatterClient.instance.init(
 
 ## 在业务项目中使用 UI 包
 
+UI 接入、主题定制与组件说明见 [feedmatter_flutter_ui README](../packages/feedmatter_flutter_ui/README.md)。SDK API 文档见根目录 [README](../README.md)。
+
 在 `pubspec.yaml` 中添加：
 
 ```yaml
@@ -81,15 +83,19 @@ dependencies:
 ```dart
 import 'package:feedmatter_flutter_ui/feedmatter_flutter_ui.dart';
 
-FeedMatterFeedbackEntry(
-  options: FeedMatterUiOptions(
-    customInfo: {'source': 'my_app'},
-    onPickAttachments: () async {
-      // 接入文件选择器并调用 uploadPublicFile / uploadPrivateFile
-      return [];
-    },
+FeedMatterThemeScope.push<void>(
+  context,
+  theme: const FeedMatterThemeOptions(mode: FeedMatterThemeMode.system),
+  child: FeedMatterFeedbackEntry(
+    options: FeedMatterUiOptions(
+      customInfo: const {'source': 'my_app'},
+      onPickAttachments: () async {
+        // 接入文件选择器并调用 uploadPublicFile / uploadPrivateFile
+        return [];
+      },
+    ),
   ),
-)
+);
 ```
 
 附件上传通过 `FeedMatterUiOptions.onPickAttachments` 回调接入，上传完成后再把 `Attachment` 传给反馈接口。

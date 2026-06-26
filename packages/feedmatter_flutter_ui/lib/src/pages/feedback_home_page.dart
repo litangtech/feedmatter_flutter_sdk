@@ -5,11 +5,11 @@ import '../feedmatter_ui_helpers.dart';
 import '../feedmatter_ui_options.dart';
 import '../theme/feedmatter_ui_theme.dart';
 import '../widgets/feedmatter_pill_tab_bar.dart';
-import '../widgets/feedmatter_search_bar.dart';
 import '../widgets/feedmatter_submit_fab.dart';
+import 'feedback_all_tab.dart';
 import 'feedback_detail_page.dart';
+import 'feedback_my_tab.dart';
 import 'feedback_submit_page.dart';
-import '../widgets/feedback_card.dart';
 
 class FeedMatterHomePage extends StatefulWidget {
   final FeedMatterUiOptions options;
@@ -29,43 +29,23 @@ class FeedMatterHomePage extends StatefulWidget {
 
 class _FeedMatterHomePageState extends State<FeedMatterHomePage>
     with SingleTickerProviderStateMixin {
-  final _keywordController = TextEditingController();
+  final _allTabKey = GlobalKey<FeedMatterAllFeedbacksTabState>();
+  final _myTabKey = GlobalKey<FeedMatterMyFeedbacksTabState>();
   late final TabController _tabController;
   fm.ProjectConfig _config = fm.ProjectConfig.defaultConfig();
-  final List<fm.Feedback> _allFeedbacks = [];
-  final List<fm.Feedback> _myFeedbacks = [];
-  bool _allLoading = true;
-  bool _myLoading = true;
   bool _loadingConfig = true;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(_onTabChanged);
-    _bootstrap();
+    _loadConfig();
   }
 
   @override
   void dispose() {
-    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
-    _keywordController.dispose();
     super.dispose();
-  }
-
-  void _onTabChanged() {
-    if (_tabController.indexIsChanging) return;
-    setState(() {});
-    _loadFeedbacks(forMine: _tabController.index == 1);
-  }
-
-  Future<void> _bootstrap() async {
-    await _loadConfig();
-    await Future.wait([
-      _loadFeedbacks(forMine: false),
-      _loadFeedbacks(forMine: true),
-    ]);
   }
 
   Future<void> _loadConfig() async {
@@ -86,63 +66,10 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage>
     }
   }
 
-  Future<void> _loadFeedbacks({required bool forMine}) async {
-    setState(() {
-      if (forMine) {
-        _myLoading = true;
-      } else {
-        _allLoading = true;
-      }
-    });
-    try {
-      final trimmedKeyword = _keywordController.text.trim();
-      final keyword = forMine
-          ? null
-          : (trimmedKeyword.isEmpty ? null : trimmedKeyword);
-      final feedbacks = forMine
-          ? await fm.FeedMatterClient.instance.getMyFeedbacks(
-              size: 30,
-              keyword: keyword.isEmpty ? null : keyword,
-            )
-          : await fm.FeedMatterClient.instance.getFeedbacks(
-              size: 30,
-              keyword: keyword.isEmpty ? null : keyword,
-            );
-      if (!mounted) return;
-      setState(() {
-        if (forMine) {
-          _myFeedbacks
-            ..clear()
-            ..addAll(feedbacks);
-          _myLoading = false;
-        } else {
-          _allFeedbacks
-            ..clear()
-            ..addAll(feedbacks);
-          _allLoading = false;
-        }
-      });
-    } catch (e) {
-      if (mounted) {
-        showFeedMatterSnackBar(context, '反馈列表加载失败：$e', isError: true);
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          if (forMine) {
-            _myLoading = false;
-          } else {
-            _allLoading = false;
-          }
-        });
-      }
-    }
-  }
-
   Future<void> _reloadAllTabs() async {
     await Future.wait([
-      _loadFeedbacks(forMine: false),
-      _loadFeedbacks(forMine: true),
+      _allTabKey.currentState?.reload() ?? Future.value(),
+      _myTabKey.currentState?.reload() ?? Future.value(),
     ]);
   }
 
@@ -183,21 +110,12 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage>
         feedback.id,
       );
       if (!mounted) return;
-      setState(() {
-        _replaceFeedback(_allFeedbacks, updated);
-        _replaceFeedback(_myFeedbacks, updated);
-      });
+      _allTabKey.currentState?.updateFeedback(updated);
+      _myTabKey.currentState?.updateFeedback(updated);
     } catch (e) {
       if (mounted) {
         showFeedMatterSnackBar(context, '点赞失败：$e', isError: true);
       }
-    }
-  }
-
-  void _replaceFeedback(List<fm.Feedback> list, fm.Feedback updated) {
-    final index = list.indexWhere((item) => item.id == updated.id);
-    if (index >= 0) {
-      list[index] = updated;
     }
   }
 
@@ -258,97 +176,33 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage>
             _ProjectConfigPanel(loading: _loadingConfig, config: _config),
           FeedMatterPillTabBar(
             controller: _tabController,
-            onTap: (index) => _tabController.animateTo(index),
+            onTap: (index) {
+              FocusManager.instance.primaryFocus?.unfocus();
+              _tabController.animateTo(index);
+            },
           ),
-          if (_tabController.index == 0)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: FeedMatterSearchBar(
-                controller: _keywordController,
-                onSubmitted: (_) => _loadFeedbacks(forMine: false),
-                onChanged: (_) => setState(() {}),
-                onClear: () {
-                  _keywordController.clear();
-                  setState(() {});
-                  _loadFeedbacks(forMine: false);
-                },
-              ),
-            ),
           Expanded(
             child: TabBarView(
               controller: _tabController,
               children: [
-                _buildTabList(
-                  feedbacks: _allFeedbacks,
-                  loading: _allLoading,
+                FeedMatterAllFeedbacksTab(
+                  key: _allTabKey,
+                  options: widget.options,
                   reserveFabSpace: reserveFabSpace,
-                  onRefresh: () => _loadFeedbacks(forMine: false),
+                  onTap: _openDetailPage,
+                  onLike: _toggleLike,
                 ),
-                _buildTabList(
-                  feedbacks: _myFeedbacks,
-                  loading: _myLoading,
+                FeedMatterMyFeedbacksTab(
+                  key: _myTabKey,
+                  options: widget.options,
                   reserveFabSpace: reserveFabSpace,
-                  onRefresh: () => _loadFeedbacks(forMine: true),
+                  onTap: _openDetailPage,
+                  onLike: _toggleLike,
                 ),
               ],
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildTabList({
-    required List<fm.Feedback> feedbacks,
-    required bool loading,
-    required bool reserveFabSpace,
-    required Future<void> Function() onRefresh,
-  }) {
-    final bottomPadding = reserveFabSpace
-        ? FeedMatterBottomActionOverlay.actionClearance
-        : 16.0;
-
-    if (loading) {
-      return ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        children: [
-          SizedBox(height: 120 + bottomPadding),
-          const Center(child: CircularProgressIndicator()),
-        ],
-      );
-    }
-
-    if (feedbacks.isEmpty) {
-      return RefreshIndicator(
-        onRefresh: onRefresh,
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          children: [
-            const SizedBox(height: 120),
-            const Icon(Icons.inbox_outlined, size: 48),
-            const SizedBox(height: 12),
-            const Center(child: Text('暂无反馈')),
-            SizedBox(height: bottomPadding),
-          ],
-        ),
-      );
-    }
-
-    return RefreshIndicator(
-      onRefresh: onRefresh,
-      child: ListView.builder(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: EdgeInsets.only(top: 4, bottom: bottomPadding),
-        itemCount: feedbacks.length,
-        itemBuilder: (context, index) {
-          final feedback = feedbacks[index];
-          return FeedMatterFeedbackCard(
-            feedback: feedback,
-            options: widget.options,
-            onTap: () => _openDetailPage(feedback),
-            onLike: () => _toggleLike(feedback),
-          );
-        },
       ),
     );
   }

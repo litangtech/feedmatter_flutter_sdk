@@ -1,8 +1,7 @@
 import 'package:feedmatter_flutter_sdk/feedmatter_flutter_sdk.dart'
     as feedmatter;
+import 'package:feedmatter_flutter_ui/feedmatter_flutter_ui.dart';
 import 'package:flutter/material.dart';
-
-import 'feedmatter_ui/feedback_home_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -66,6 +65,14 @@ class _FeedMatterExampleAppState extends State<FeedMatterExampleApp> {
 
   @override
   Widget build(BuildContext context) {
-    return const FeedMatterHomePage();
+    return FeedMatterFeedbackEntry(
+      options: FeedMatterUiOptions(
+        showProjectConfigDebugPanel: true,
+        customInfo: const {
+          'source': 'feedmatter_flutter_sdk_example',
+          'ui': 'feedmatter_flutter_ui',
+        },
+      ),
+    );
   }
 }

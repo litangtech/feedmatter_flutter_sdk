@@ -1,14 +1,17 @@
 import 'package:feedmatter_flutter_sdk/feedmatter_flutter_sdk.dart' as fm;
 import 'package:flutter/material.dart';
 
-import 'feedmatter_ui_helpers.dart';
+import '../feedmatter_ui_helpers.dart';
+import '../feedmatter_ui_options.dart';
 
 class FeedMatterSubmitPage extends StatefulWidget {
   final fm.ProjectConfig config;
+  final FeedMatterUiOptions options;
 
   const FeedMatterSubmitPage({
     super.key,
     required this.config,
+    this.options = const FeedMatterUiOptions(),
   });
 
   @override
@@ -19,11 +22,40 @@ class _FeedMatterSubmitPageState extends State<FeedMatterSubmitPage> {
   final _contentController = TextEditingController();
   fm.FeedbackType _selectedType = fm.FeedbackType.advice;
   bool _submitting = false;
+  bool _pickingAttachments = false;
+  List<fm.Attachment> _attachments = [];
 
   @override
   void dispose() {
     _contentController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickAttachments() async {
+    final onPick = widget.options.onPickAttachments;
+    if (onPick == null) return;
+
+    setState(() => _pickingAttachments = true);
+    try {
+      final picked = await onPick();
+      if (!mounted) return;
+      final maxCount = widget.config.maxAttachments;
+      final merged = [..._attachments, ...picked];
+      if (merged.length > maxCount) {
+        showFeedMatterSnackBar(context, '最多只能添加 $maxCount 个附件', isError: true);
+        setState(() => _attachments = merged.take(maxCount).toList());
+      } else {
+        setState(() => _attachments = merged);
+      }
+    } catch (e) {
+      if (mounted) {
+        showFeedMatterSnackBar(context, '附件选择失败：$e', isError: true);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _pickingAttachments = false);
+      }
+    }
   }
 
   Future<void> _submit() async {
@@ -46,10 +78,8 @@ class _FeedMatterSubmitPageState extends State<FeedMatterSubmitPage> {
       await fm.FeedMatterClient.instance.createFeedback(
         content: content,
         type: _selectedType,
-        customInfo: {
-          'source': 'feedmatter_flutter_sdk_example',
-          'ui': 'copyable_example',
-        },
+        customInfo: widget.options.customInfo,
+        attachments: _attachments.isEmpty ? null : _attachments,
       );
       if (!mounted) return;
       showFeedMatterSnackBar(context, '反馈提交成功');
@@ -73,12 +103,16 @@ class _FeedMatterSubmitPageState extends State<FeedMatterSubmitPage> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _ConfigNotice(config: config),
-          const SizedBox(height: 16),
-          Text(
-            '反馈类型',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
+          if (!config.feedbackEnabled)
+            Card(
+              color: Theme.of(context).colorScheme.errorContainer,
+              child: const Padding(
+                padding: EdgeInsets.all(12),
+                child: Text('当前项目已关闭反馈发布'),
+              ),
+            ),
+          if (!config.feedbackEnabled) const SizedBox(height: 16),
+          Text('反馈类型', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
@@ -113,16 +147,42 @@ class _FeedMatterSubmitPageState extends State<FeedMatterSubmitPage> {
           ),
           if (config.feedbackAttachmentEnabled) ...[
             const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: () {
-                showFeedMatterSnackBar(
-                  context,
-                  '这里预留给业务 App 接入文件选择器，然后调用 uploadPublicFile() 上传。',
-                );
-              },
-              icon: const Icon(Icons.attach_file),
-              label: const Text('添加附件（示例预留）'),
-            ),
+            if (widget.options.onPickAttachments != null)
+              OutlinedButton.icon(
+                onPressed: _pickingAttachments || _submitting
+                    ? null
+                    : _pickAttachments,
+                icon: _pickingAttachments
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.attach_file),
+                label: const Text('添加附件'),
+              ),
+            if (_attachments.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              for (final attachment in _attachments)
+                ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.insert_drive_file_outlined),
+                  title: Text(attachment.fileName),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: _submitting
+                        ? null
+                        : () {
+                            setState(() {
+                              _attachments = _attachments
+                                  .where((item) => item != attachment)
+                                  .toList();
+                            });
+                          },
+                  ),
+                ),
+            ],
             const SizedBox(height: 8),
             Text(
               '最多 ${config.maxAttachments} 个附件，单个文件最大 ${(config.maxUploadFileSize / 1024 / 1024).round()}MB。',
@@ -141,36 +201,6 @@ class _FeedMatterSubmitPageState extends State<FeedMatterSubmitPage> {
                 : const Text('提交反馈'),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _ConfigNotice extends StatelessWidget {
-  final fm.ProjectConfig config;
-
-  const _ConfigNotice({required this.config});
-
-  @override
-  Widget build(BuildContext context) {
-    if (config.feedbackEnabled) {
-      return Card(
-        color: Theme.of(context).colorScheme.primaryContainer,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Text(
-            '示例会在进入提交页前检查项目配置。你可以复制这里的判断逻辑，用来控制反馈入口、附件入口和字数限制。',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-        ),
-      );
-    }
-
-    return Card(
-      color: Theme.of(context).colorScheme.errorContainer,
-      child: const Padding(
-        padding: EdgeInsets.all(12),
-        child: Text('当前项目已关闭反馈发布，客户端应隐藏提交入口或展示禁用提示。'),
       ),
     );
   }

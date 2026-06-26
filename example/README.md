@@ -5,7 +5,9 @@
 ## 示例覆盖
 
 - 初始化 `FeedMatterClient`。
-- 读取项目配置，并根据配置控制反馈、评论、附件等入口。
+- 通过 `feedmatter_flutter_ui` 展示帮助与反馈入口（`FeedMatterFeedbackEntry`）。
+- 读取项目配置，并根据配置控制 FAQ、反馈、评论、附件等入口。
+- 常见问题列表、搜索与版本缓存。
 - 展示全部反馈 / 我的反馈列表。
 - 搜索反馈。
 - 提交反馈。
@@ -13,7 +15,7 @@
 - 发布评论和楼中楼回复。
 - 加载更多回复。
 - 点赞反馈。
-- 预留附件上传入口。
+- 项目配置调试面板（`showProjectConfigDebugPanel: true`）。
 
 ## 运行示例
 
@@ -64,19 +66,30 @@ feedmatter.FeedMatterClient.instance.init(
 
 如果你的服务部署在自己的域名，请同步替换 `baseUrl`。
 
-## 复制到业务项目
+## 在业务项目中使用 UI 包
 
-如果你想快速在业务 App 中复用 UI，可以复制：
+在 `pubspec.yaml` 中添加：
 
-```text
-lib/feedmatter_ui/
+```yaml
+dependencies:
+  feedmatter_flutter_sdk: ^1.0.6
+  feedmatter_flutter_ui: ^0.1.0
 ```
 
-然后在业务 App 启动或用户信息加载完成后，参考 `lib/main.dart` 初始化 `FeedMatterClient`。
+然后在 App 中挂载：
 
-附件上传按钮目前只做了入口预留。业务项目接入文件选择器后，可以调用：
+```dart
+import 'package:feedmatter_flutter_ui/feedmatter_flutter_ui.dart';
 
-- `uploadPublicFile()`
-- `uploadPrivateFile()`
+FeedMatterFeedbackEntry(
+  options: FeedMatterUiOptions(
+    customInfo: {'source': 'my_app'},
+    onPickAttachments: () async {
+      // 接入文件选择器并调用 uploadPublicFile / uploadPrivateFile
+      return [];
+    },
+  ),
+)
+```
 
-上传完成后再把附件 URL 传给反馈或评论接口。
+附件上传通过 `FeedMatterUiOptions.onPickAttachments` 回调接入，上传完成后再把 `Attachment` 传给反馈接口。

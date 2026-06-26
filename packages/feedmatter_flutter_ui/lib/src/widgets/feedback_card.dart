@@ -103,10 +103,7 @@ class _Badge extends StatelessWidget {
   final String label;
   final Color color;
 
-  const _Badge({
-    required this.label,
-    required this.color,
-  });
+  const _Badge({required this.label, required this.color});
 
   @override
   Widget build(BuildContext context) {

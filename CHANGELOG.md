@@ -1,3 +1,8 @@
+## 1.0.6
+
+* 🧩 新增独立 UI 包 `feedmatter_flutter_ui`（`packages/feedmatter_flutter_ui`），提供反馈列表、提交、详情、FAQ 及组合入口 Widget。
+* 📝 更新 README 与 example，改为依赖 UI 包接入，不再要求复制 `feedmatter_ui/` 目录。
+
 ## 1.0.5
 
 * 📝 完善常见问题 FAQ 文档，补充 `getFaqList()` 用法、版本缓存建议和 FAQ 数据结构说明。

@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 
 import '../feedmatter_ui_helpers.dart';
 import '../feedmatter_ui_options.dart';
+import '../theme/feedmatter_ui_theme.dart';
+import '../widgets/feedmatter_help_tips_sheet.dart';
+import '../widgets/feedmatter_submit_fab.dart';
 import 'faq_page.dart';
 import 'feedback_home_page.dart';
 import 'feedback_submit_page.dart';
@@ -65,8 +68,31 @@ class _FeedMatterFeedbackEntryState extends State<FeedMatterFeedbackEntry> {
     }
   }
 
+  Future<void> _openFaqPage() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => FeedMatterFaqPage(
+          config: _config,
+          options: widget.options,
+          onSubmitFeedback: _openSubmitPage,
+        ),
+      ),
+    );
+  }
+
+  void _onHelpTap() {
+    final handler = widget.options.onHelpTap;
+    if (handler != null) {
+      handler();
+      return;
+    }
+    showFeedMatterHelpTipsSheet(context);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = FeedMatterUiTheme.of(context);
+
     if (_loadingConfig) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
@@ -75,40 +101,38 @@ class _FeedMatterFeedbackEntryState extends State<FeedMatterFeedbackEntry> {
       return FeedMatterHomePage(options: widget.options);
     }
 
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('帮助与反馈'),
-          actions: [
-            IconButton(onPressed: _loadConfig, icon: const Icon(Icons.refresh)),
-          ],
-          bottom: const TabBar(
-            tabs: [
-              Tab(text: '常见问题'),
-              Tab(text: '反馈列表'),
-            ],
+    return Scaffold(
+      backgroundColor: theme.pageBackground,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        foregroundColor: theme.textPrimary,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        title: const Text(
+          '意见反馈',
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+        ),
+        actions: [
+          IconButton(
+            onPressed: _onHelpTap,
+            icon: const Icon(Icons.help_outline),
           ),
+        ],
+      ),
+      body: FeedMatterBottomActionOverlay(
+        leftAction: FeedMatterBottomPill(
+          onPressed: _openFaqPage,
+          label: '常见问题',
+          icon: Icons.quiz_outlined,
         ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: _openSubmitPage,
-          icon: const Icon(Icons.edit_outlined),
-          label: const Text('提交反馈'),
+        rightAction: FeedMatterSubmitFab(
+          onPressed: _loadingConfig ? null : _openSubmitPage,
         ),
-        body: TabBarView(
-          children: [
-            FeedMatterFaqPage(
-              config: _config,
-              options: widget.options,
-              embedded: true,
-              onSubmitFeedback: _openSubmitPage,
-            ),
-            FeedMatterHomePage(
-              key: ValueKey(_homeRefreshKey),
-              options: widget.options,
-              embedded: true,
-            ),
-          ],
+        child: FeedMatterHomePage(
+          key: ValueKey(_homeRefreshKey),
+          options: widget.options,
+          embedded: true,
+          showFloatingSubmit: false,
         ),
       ),
     );

@@ -3,46 +3,50 @@ import 'package:flutter/material.dart';
 
 import '../feedmatter_ui_helpers.dart';
 import '../feedmatter_ui_options.dart';
+import '../theme/feedmatter_ui_theme.dart';
+import '../widgets/feedmatter_help_tips_sheet.dart';
+import '../widgets/feedmatter_pill_tab_bar.dart';
+import '../widgets/feedmatter_submit_fab.dart';
+import 'feedback_all_tab.dart';
 import 'feedback_detail_page.dart';
+import 'feedback_my_tab.dart';
 import 'feedback_submit_page.dart';
-import '../widgets/feedback_card.dart';
 
 class FeedMatterHomePage extends StatefulWidget {
   final FeedMatterUiOptions options;
   final bool embedded;
+  final bool showFloatingSubmit;
 
   const FeedMatterHomePage({
     super.key,
     this.options = const FeedMatterUiOptions(),
     this.embedded = false,
+    this.showFloatingSubmit = true,
   });
 
   @override
   State<FeedMatterHomePage> createState() => _FeedMatterHomePageState();
 }
 
-class _FeedMatterHomePageState extends State<FeedMatterHomePage> {
-  final _keywordController = TextEditingController();
+class _FeedMatterHomePageState extends State<FeedMatterHomePage>
+    with SingleTickerProviderStateMixin {
+  final _allTabKey = GlobalKey<FeedMatterAllFeedbacksTabState>();
+  final _myTabKey = GlobalKey<FeedMatterMyFeedbacksTabState>();
+  late final TabController _tabController;
   fm.ProjectConfig _config = fm.ProjectConfig.defaultConfig();
-  List<fm.Feedback> _feedbacks = [];
-  bool _loading = true;
   bool _loadingConfig = true;
-  bool _onlyMine = false;
 
   @override
   void initState() {
     super.initState();
-    _bootstrap();
+    _tabController = TabController(length: 2, vsync: this);
+    _loadConfig();
   }
 
   @override
   void dispose() {
-    _keywordController.dispose();
+    _tabController.dispose();
     super.dispose();
-  }
-
-  Future<void> _bootstrap() async {
-    await Future.wait([_loadConfig(), _loadFeedbacks()]);
   }
 
   Future<void> _loadConfig() async {
@@ -63,31 +67,11 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage> {
     }
   }
 
-  Future<void> _loadFeedbacks() async {
-    setState(() => _loading = true);
-    try {
-      final keyword = _keywordController.text.trim();
-      final feedbacks = _onlyMine
-          ? await fm.FeedMatterClient.instance.getMyFeedbacks(
-              size: 30,
-              keyword: keyword.isEmpty ? null : keyword,
-            )
-          : await fm.FeedMatterClient.instance.getFeedbacks(
-              size: 30,
-              keyword: keyword.isEmpty ? null : keyword,
-            );
-      if (mounted) {
-        setState(() => _feedbacks = feedbacks);
-      }
-    } catch (e) {
-      if (mounted) {
-        showFeedMatterSnackBar(context, '反馈列表加载失败：$e', isError: true);
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _loading = false);
-      }
-    }
+  Future<void> _reloadAllTabs() async {
+    await Future.wait([
+      _allTabKey.currentState?.reload() ?? Future.value(),
+      _myTabKey.currentState?.reload() ?? Future.value(),
+    ]);
   }
 
   Future<void> _openSubmitPage() async {
@@ -102,7 +86,7 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage> {
       ),
     );
     if (created == true) {
-      await _loadFeedbacks();
+      await _reloadAllTabs();
     }
   }
 
@@ -117,7 +101,7 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage> {
       ),
     );
     if (changed == true) {
-      await _loadFeedbacks();
+      await _reloadAllTabs();
     }
   }
 
@@ -127,11 +111,8 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage> {
         feedback.id,
       );
       if (!mounted) return;
-      setState(() {
-        _feedbacks = _feedbacks
-            .map((item) => item.id == updated.id ? updated : item)
-            .toList();
-      });
+      _allTabKey.currentState?.updateFeedback(updated);
+      _myTabKey.currentState?.updateFeedback(updated);
     } catch (e) {
       if (mounted) {
         showFeedMatterSnackBar(context, '点赞失败：$e', isError: true);
@@ -139,105 +120,91 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage> {
     }
   }
 
+  void _onHelpTap() {
+    final handler = widget.options.onHelpTap;
+    if (handler != null) {
+      handler();
+      return;
+    }
+    showFeedMatterHelpTipsSheet(context);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = FeedMatterUiTheme.of(context);
     final body = _buildBody();
+
     if (widget.embedded) {
       return body;
     }
+
     return Scaffold(
+      backgroundColor: theme.pageBackground,
       appBar: AppBar(
-        title: const Text('用户反馈'),
+        backgroundColor: Colors.white,
+        foregroundColor: theme.textPrimary,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        title: const Text(
+          '意见反馈',
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+        ),
         actions: [
-          IconButton(onPressed: _bootstrap, icon: const Icon(Icons.refresh)),
+          IconButton(
+            onPressed: _onHelpTap,
+            icon: const Icon(Icons.help_outline),
+          ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _loadingConfig ? null : _openSubmitPage,
-        icon: const Icon(Icons.edit_outlined),
-        label: const Text('提交反馈'),
+      body: FeedMatterBottomActionOverlay(
+        rightAction: FeedMatterSubmitFab(
+          onPressed: _loadingConfig ? null : _openSubmitPage,
+        ),
+        child: body,
       ),
-      body: body,
     );
   }
 
   Widget _buildBody() {
-    return Column(
-      children: [
-        if (widget.options.showProjectConfigDebugPanel)
-          _ProjectConfigPanel(loading: _loadingConfig, config: _config),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-          child: TextField(
-            controller: _keywordController,
-            textInputAction: TextInputAction.search,
-            onSubmitted: (_) => _loadFeedbacks(),
-            decoration: InputDecoration(
-              hintText: '搜索反馈内容',
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: _keywordController.text.isEmpty
-                  ? null
-                  : IconButton(
-                      onPressed: () {
-                        _keywordController.clear();
-                        _loadFeedbacks();
-                      },
-                      icon: const Icon(Icons.clear),
-                    ),
-              border: const OutlineInputBorder(),
-            ),
-            onChanged: (_) => setState(() {}),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-          child: SegmentedButton<bool>(
-            segments: const [
-              ButtonSegment(value: false, label: Text('全部反馈')),
-              ButtonSegment(value: true, label: Text('我的反馈')),
-            ],
-            selected: {_onlyMine},
-            onSelectionChanged: (value) {
-              setState(() => _onlyMine = value.first);
-              _loadFeedbacks();
+    final theme = FeedMatterUiTheme.of(context);
+    final reserveFabSpace = widget.showFloatingSubmit || widget.embedded;
+
+    return ColoredBox(
+      color: theme.pageBackground,
+      child: Column(
+        children: [
+          if (shouldShowProjectConfigDebugPanel(widget.options))
+            _ProjectConfigPanel(loading: _loadingConfig, config: _config),
+          FeedMatterPillTabBar(
+            controller: _tabController,
+            onTap: (index) {
+              FocusManager.instance.primaryFocus?.unfocus();
+              _tabController.animateTo(index);
             },
           ),
-        ),
-        Expanded(
-          child: RefreshIndicator(
-            onRefresh: _loadFeedbacks,
-            child: _buildList(),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                FeedMatterAllFeedbacksTab(
+                  key: _allTabKey,
+                  options: widget.options,
+                  reserveFabSpace: reserveFabSpace,
+                  onTap: _openDetailPage,
+                  onLike: _toggleLike,
+                ),
+                FeedMatterMyFeedbacksTab(
+                  key: _myTabKey,
+                  options: widget.options,
+                  reserveFabSpace: reserveFabSpace,
+                  onTap: _openDetailPage,
+                  onLike: _toggleLike,
+                ),
+              ],
+            ),
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildList() {
-    if (_loading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (_feedbacks.isEmpty) {
-      return ListView(
-        children: const [
-          SizedBox(height: 120),
-          Icon(Icons.inbox_outlined, size: 48),
-          SizedBox(height: 12),
-          Center(child: Text('暂无反馈')),
         ],
-      );
-    }
-    return ListView.builder(
-      padding: const EdgeInsets.only(bottom: 96),
-      itemCount: _feedbacks.length,
-      itemBuilder: (context, index) {
-        final feedback = _feedbacks[index];
-        return FeedMatterFeedbackCard(
-          feedback: feedback,
-          onTap: () => _openDetailPage(feedback),
-          onLike: () => _toggleLike(feedback),
-        );
-      },
+      ),
     );
   }
 }

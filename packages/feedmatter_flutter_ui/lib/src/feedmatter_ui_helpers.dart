@@ -1,13 +1,37 @@
 import 'package:feedmatter_flutter_sdk/feedmatter_flutter_sdk.dart' as fm;
 import 'package:flutter/material.dart';
 
+import 'feedmatter_ui_options.dart';
+import 'widgets/feedmatter_tag.dart';
+
 String formatRelativeTime(DateTime time) {
   final diff = DateTime.now().difference(time.toLocal());
   if (diff.inMinutes < 1) return '刚刚';
   if (diff.inHours < 1) return '${diff.inMinutes} 分钟前';
   if (diff.inDays < 1) return '${diff.inHours} 小时前';
   if (diff.inDays < 7) return '${diff.inDays} 天前';
-  return '${time.year}-${time.month.toString().padLeft(2, '0')}-${time.day.toString().padLeft(2, '0')}';
+  return formatAbsoluteTime(time);
+}
+
+String formatDisplayTime(DateTime time) {
+  final diff = DateTime.now().difference(time.toLocal());
+  if (diff.inMinutes < 1) return '刚刚';
+  if (diff.inDays < 7) {
+    if (diff.inHours < 1) return '${diff.inMinutes} 分钟前';
+    if (diff.inDays < 1) return '${diff.inHours} 小时前';
+    return '${diff.inDays} 天前';
+  }
+  return formatAbsoluteTime(time);
+}
+
+String formatAbsoluteTime(DateTime time) {
+  final local = time.toLocal();
+  final year = local.year;
+  final month = local.month.toString().padLeft(2, '0');
+  final day = local.day.toString().padLeft(2, '0');
+  final hour = local.hour.toString().padLeft(2, '0');
+  final minute = local.minute.toString().padLeft(2, '0');
+  return '$year-$month-$day $hour:$minute';
 }
 
 String feedbackTypeLabel(fm.FeedbackType? type) {
@@ -15,9 +39,9 @@ String feedbackTypeLabel(fm.FeedbackType? type) {
     case fm.FeedbackType.advice:
       return '建议';
     case fm.FeedbackType.error:
-      return '问题';
+      return '错误';
     case fm.FeedbackType.ask:
-      return '咨询';
+      return '提问';
     case fm.FeedbackType.help:
       return '求助';
     case fm.FeedbackType.notice:
@@ -63,6 +87,55 @@ String authorName(fm.Author author) {
     return username;
   }
   return '匿名用户';
+}
+
+/// 是否展示列表页顶部的项目配置调试开关。
+/// 需要 SDK [FeedMatterConfig.debug] 为 `true`，且 UI 选项未显式关闭。
+bool shouldShowProjectConfigDebugPanel(FeedMatterUiOptions options) {
+  if (fm.FeedMatterClient.instance.config?.debug != true) {
+    return false;
+  }
+  return options.showProjectConfigDebugPanel;
+}
+
+String? platformLabel(fm.ClientInfo? clientInfo) {
+  final appType = clientInfo?.appType;
+  if (appType == null || appType.trim().isEmpty) return null;
+  return appType.toUpperCase();
+}
+
+bool isFeedbackAdmin(fm.FeedbackMark? mark) {
+  if (mark == null) return false;
+  return mark.isAdmin || mark.isAdminReply;
+}
+
+bool isCommentAdmin(fm.CommentMark? mark) {
+  if (mark == null) return false;
+  return mark.isAdmin || mark.isAdminReply;
+}
+
+List<FeedMatterTagData> feedbackTags(fm.Feedback feedback) {
+  final tags = <FeedMatterTagData>[];
+  if (isFeedbackAdmin(feedback.mark)) {
+    tags.add(const FeedMatterTagData(label: '管理员', variant: FeedMatterTagVariant.admin));
+  }
+  if (feedback.isPinned) {
+    tags.add(const FeedMatterTagData(label: '置顶', variant: FeedMatterTagVariant.pinned));
+  }
+  if (feedback.type == fm.FeedbackType.notice) {
+    tags.add(const FeedMatterTagData(label: '公告', variant: FeedMatterTagVariant.notice));
+  }
+  if (feedback.type != null && feedback.type != fm.FeedbackType.notice) {
+    tags.add(FeedMatterTagData(
+      label: feedbackTypeLabel(feedback.type),
+      variant: FeedMatterTagVariant.type,
+    ));
+  }
+  final platform = platformLabel(feedback.clientInfo);
+  if (platform != null) {
+    tags.add(FeedMatterTagData(label: platform, variant: FeedMatterTagVariant.platform));
+  }
+  return tags;
 }
 
 void showFeedMatterSnackBar(

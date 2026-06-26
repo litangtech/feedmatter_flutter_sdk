@@ -1,9 +1,16 @@
 import 'package:feedmatter_flutter_sdk/feedmatter_flutter_sdk.dart' as fm;
 import 'package:flutter/material.dart';
 
+import '../attachment/default_attachment_picker.dart';
 import '../feedmatter_ui_helpers.dart';
 import '../feedmatter_ui_options.dart';
-import '../widgets/comment_floor_card.dart';
+import '../theme/feedmatter_ui_theme.dart';
+import '../widgets/attachment_list.dart';
+import '../widgets/feedmatter_comment_attachment_strip.dart';
+import '../widgets/feedmatter_comment_row.dart';
+import '../widgets/feedmatter_link_text.dart';
+import '../widgets/feedmatter_tag.dart';
+import '../widgets/feedmatter_user_header.dart';
 
 class FeedMatterDetailPage extends StatefulWidget {
   final String feedbackId;
@@ -27,8 +34,11 @@ class _FeedMatterDetailPageState extends State<FeedMatterDetailPage> {
   fm.Page<fm.MainCommentWithReplies>? _commentPage;
   bool _loading = true;
   bool _sending = false;
+  bool _pickingAttachments = false;
+  bool _commentsExpanded = true;
   String? _replyToCommentId;
   String? _replyToName;
+  List<fm.Attachment> _commentAttachments = [];
   final Map<String, List<fm.Comment>> _extraRepliesByComment = {};
   final Map<String, int> _replyPageByComment = {};
   final Set<String> _loadingReplyCommentIds = {};
@@ -37,6 +47,7 @@ class _FeedMatterDetailPageState extends State<FeedMatterDetailPage> {
   void initState() {
     super.initState();
     _loadDetail();
+    _commentController.addListener(() => setState(() {}));
   }
 
   @override
@@ -74,6 +85,53 @@ class _FeedMatterDetailPageState extends State<FeedMatterDetailPage> {
     }
   }
 
+  Future<void> _pickCommentAttachments() async {
+    if (!widget.config.commentAttachmentEnabled) return;
+
+    final customPick = widget.options.onPickAttachments;
+    final useDefaultPicker = widget.options.useDefaultAttachmentPicker;
+    if (customPick == null && !useDefaultPicker) return;
+
+    final maxCount = widget.config.maxAttachments;
+    if (_commentAttachments.length >= maxCount) {
+      showFeedMatterSnackBar(context, '最多只能添加 $maxCount 个附件', isError: true);
+      return;
+    }
+
+    setState(() => _pickingAttachments = true);
+    try {
+      final List<fm.Attachment> picked;
+      if (customPick != null) {
+        picked = await customPick();
+      } else {
+        final result = await pickAndUploadAttachments(
+          config: widget.config,
+          remainingSlots: maxCount - _commentAttachments.length,
+        );
+        if (result.warning != null && mounted) {
+          showFeedMatterSnackBar(context, result.warning!, isError: true);
+        }
+        picked = result.attachments;
+      }
+
+      if (!mounted) return;
+      final merged = [..._commentAttachments, ...picked];
+      setState(() {
+        _commentAttachments = merged.length > maxCount
+            ? merged.take(maxCount).toList()
+            : merged;
+      });
+    } catch (e) {
+      if (mounted) {
+        showFeedMatterSnackBar(context, '附件选择失败：$e', isError: true);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _pickingAttachments = false);
+      }
+    }
+  }
+
   Future<void> _sendComment() async {
     final feedback = _feedback;
     if (feedback == null) return;
@@ -82,8 +140,8 @@ class _FeedMatterDetailPageState extends State<FeedMatterDetailPage> {
       return;
     }
     final content = _commentController.text.trim();
-    if (content.isEmpty) {
-      showFeedMatterSnackBar(context, '请输入评论内容', isError: true);
+    if (content.isEmpty && _commentAttachments.isEmpty) {
+      showFeedMatterSnackBar(context, '请输入评论内容或添加图片', isError: true);
       return;
     }
     if (content.length > widget.config.commentMaxContentLength) {
@@ -101,8 +159,11 @@ class _FeedMatterDetailPageState extends State<FeedMatterDetailPage> {
         feedback.id,
         content,
         parentCommentId: _replyToCommentId,
+        attachments:
+            _commentAttachments.isEmpty ? null : _commentAttachments,
       );
       _commentController.clear();
+      _commentAttachments = [];
       _clearReplyTarget();
       await _loadDetail();
       if (mounted) {
@@ -167,161 +228,276 @@ class _FeedMatterDetailPageState extends State<FeedMatterDetailPage> {
   @override
   Widget build(BuildContext context) {
     final feedback = _feedback;
+    final theme = FeedMatterUiTheme.of(context);
+
     return Scaffold(
+      backgroundColor: theme.pageBackground,
       appBar: AppBar(
-        title: const Text('反馈详情'),
-        actions: [
-          IconButton(onPressed: _loadDetail, icon: const Icon(Icons.refresh)),
-        ],
+        backgroundColor: Colors.white,
+        foregroundColor: theme.textPrimary,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        title: const Text(
+          '反馈详情',
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+        ),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : feedback == null
-          ? const Center(child: Text('反馈不存在'))
-          : Column(
-              children: [
-                Expanded(
-                  child: RefreshIndicator(
-                    onRefresh: _loadDetail,
-                    child: ListView(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      children: [
-                        _FeedbackDetailCard(feedback: feedback),
-                        _CommentHeader(config: widget.config),
-                        ..._buildCommentCards(),
-                      ],
+              ? const Center(child: Text('反馈不存在'))
+              : Column(
+                  children: [
+                    Expanded(
+                      child: RefreshIndicator(
+                        onRefresh: _loadDetail,
+                        child: ListView(
+                          children: [
+                            _FeedbackDetailCard(
+                              feedback: feedback,
+                              options: widget.options,
+                            ),
+                            _CommentListHeader(
+                              expanded: _commentsExpanded,
+                              onToggle: () => setState(
+                                () => _commentsExpanded = !_commentsExpanded,
+                              ),
+                            ),
+                            if (_commentsExpanded) ..._buildCommentRows(),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
+                    _CommentInputBar(
+                      controller: _commentController,
+                      enabled: widget.config.commentEnabled &&
+                          feedback.allowComment,
+                      sending: _sending,
+                      pickingAttachments: _pickingAttachments,
+                      replyToName: _replyToName,
+                      maxLength: widget.config.commentMaxContentLength,
+                      hintText: widget.config.commentPrompt,
+                      attachments: _commentAttachments,
+                      maxAttachments: widget.config.maxAttachments,
+                      showAttachmentButton:
+                          widget.config.commentAttachmentEnabled &&
+                              (widget.options.onPickAttachments != null ||
+                                  widget.options
+                                      .useDefaultAttachmentPicker),
+                      onCancelReply: _clearReplyTarget,
+                      onPickAttachment: _pickCommentAttachments,
+                      onRemoveAttachment: (attachment) {
+                        setState(() {
+                          _commentAttachments = _commentAttachments
+                              .where((item) => item != attachment)
+                              .toList();
+                        });
+                      },
+                      onSend: _sendComment,
+                    ),
+                  ],
                 ),
-                _CommentInputBar(
-                  controller: _commentController,
-                  enabled:
-                      widget.config.commentEnabled && feedback.allowComment,
-                  sending: _sending,
-                  replyToName: _replyToName,
-                  maxLength: widget.config.commentMaxContentLength,
-                  hintText: widget.config.commentPrompt,
-                  onCancelReply: _clearReplyTarget,
-                  onSend: _sendComment,
-                ),
-              ],
-            ),
     );
   }
 
-  List<Widget> _buildCommentCards() {
+  List<Widget> _buildCommentRows() {
     final comments = _commentPage?.content ?? [];
     if (comments.isEmpty) {
       return const [
         SizedBox(height: 48),
         Center(child: Text('暂无评论，来发布第一条评论吧')),
+        SizedBox(height: 48),
       ];
     }
-    return [
-      for (final comment in comments)
-        FeedMatterCommentFloorCard(
-          comment: comment,
-          extraReplies: _extraRepliesByComment[comment.id] ?? const [],
-          isLoadingMore: _loadingReplyCommentIds.contains(comment.id),
-          onReply: () =>
-              _setReplyTarget(comment.id, authorName(comment.author)),
-          onLoadMoreReplies: () => _loadMoreReplies(comment),
+
+    final rows = <Widget>[];
+    for (final comment in comments) {
+      final replies = [...comment.replies.content, ..._extraRepliesByComment[comment.id] ?? const []];
+      final loadedReplyCount = replies.length;
+      final hasMoreReplies = loadedReplyCount < comment.replies.totalElements;
+      final isLastMain = comment == comments.last && !hasMoreReplies;
+
+      rows.add(
+        FeedMatterCommentRow.fromMainComment(
+          comment,
+          options: widget.options,
+          showDivider: !isLastMain || replies.isNotEmpty || hasMoreReplies,
+          onTap: () => _setReplyTarget(
+            comment.id,
+            authorName(comment.author),
+          ),
         ),
-    ];
+      );
+
+      for (var i = 0; i < replies.length; i++) {
+        final reply = replies[i];
+        final isLastReply = i == replies.length - 1;
+        rows.add(
+          FeedMatterCommentRow.fromComment(
+            reply,
+            options: widget.options,
+            showDivider: !isLastReply || hasMoreReplies || !isLastMain,
+            onTap: () => _setReplyTarget(
+              reply.id,
+              authorName(reply.author),
+            ),
+          ),
+        );
+      }
+
+      if (hasMoreReplies) {
+        rows.add(
+          _LoadMoreRepliesButton(
+            loading: _loadingReplyCommentIds.contains(comment.id),
+            loaded: loadedReplyCount,
+            total: comment.replies.totalElements,
+            onTap: () => _loadMoreReplies(comment),
+          ),
+        );
+      }
+    }
+    return rows;
   }
 }
 
 class _FeedbackDetailCard extends StatelessWidget {
   final fm.Feedback feedback;
+  final FeedMatterUiOptions options;
 
-  const _FeedbackDetailCard({required this.feedback});
+  const _FeedbackDetailCard({
+    required this.feedback,
+    required this.options,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final statusColor = feedbackStatusColor(feedback.status);
-    return Card(
+    final theme = FeedMatterUiTheme.of(context);
+    final tags = feedbackTags(feedback);
+
+    return Container(
       margin: const EdgeInsets.all(16),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(
-                  feedbackTypeLabel(feedback.type),
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  feedbackStatusLabel(feedback.status),
-                  style: TextStyle(
-                    color: statusColor,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const Spacer(),
-                Text(formatRelativeTime(feedback.createdAt)),
-              ],
-            ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(theme.cardRadius),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          FeedMatterUserHeader(
+            author: feedback.author,
+            createdAt: feedback.createdAt,
+            useAbsoluteTime: true,
+          ),
+          const SizedBox(height: 12),
+          FeedMatterLinkText(
+            text: feedback.content,
+            onUrlTap: options.onContentUrlTap,
+          ),
+          if (feedback.attachments != null &&
+              feedback.attachments!.isNotEmpty) ...[
             const SizedBox(height: 12),
-            Text(
-              feedback.content,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 16),
+            FeedMatterAttachmentList(attachments: feedback.attachments!),
+          ],
+          if (tags.isNotEmpty || feedback.commentCount > 0) ...[
+            const SizedBox(height: 12),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                CircleAvatar(
-                  radius: 14,
-                  backgroundImage: feedback.author.avatar == null
-                      ? null
-                      : NetworkImage(feedback.author.avatar!),
-                  child: feedback.author.avatar == null
-                      ? const Icon(Icons.person, size: 16)
-                      : null,
+                Expanded(child: FeedMatterTagRow(tags: tags)),
+                Text(
+                  '${feedback.commentCount}评论',
+                  style: TextStyle(
+                    color: theme.textSecondary,
+                    fontSize: 13,
+                  ),
                 ),
-                const SizedBox(width: 8),
-                Expanded(child: Text(authorName(feedback.author))),
-                const Icon(Icons.favorite_border, size: 18),
-                const SizedBox(width: 4),
-                Text('${feedback.likeCount}'),
-                const SizedBox(width: 12),
-                const Icon(Icons.mode_comment_outlined, size: 18),
-                const SizedBox(width: 4),
-                Text('${feedback.commentCount}'),
               ],
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+class _CommentListHeader extends StatelessWidget {
+  final bool expanded;
+  final VoidCallback onToggle;
+
+  const _CommentListHeader({
+    required this.expanded,
+    required this.onToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = FeedMatterUiTheme.of(context);
+    return Material(
+      color: Colors.white,
+      child: InkWell(
+        onTap: onToggle,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          child: Row(
+            children: [
+              Text(
+                '评论列表',
+                style: TextStyle(
+                  color: theme.textPrimary,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(width: 4),
+              AnimatedRotation(
+                turns: expanded ? 0 : -0.25,
+                duration: const Duration(milliseconds: 200),
+                child: Icon(
+                  Icons.arrow_drop_down,
+                  color: theme.textSecondary,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _CommentHeader extends StatelessWidget {
-  final fm.ProjectConfig config;
+class _LoadMoreRepliesButton extends StatelessWidget {
+  final bool loading;
+  final int loaded;
+  final int total;
+  final VoidCallback onTap;
 
-  const _CommentHeader({required this.config});
+  const _LoadMoreRepliesButton({
+    required this.loading,
+    required this.loaded,
+    required this.total,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-      child: Row(
-        children: [
-          Text('评论', style: Theme.of(context).textTheme.titleMedium),
-          const Spacer(),
-          Text(
-            config.commentEnabled ? '评论已开启' : '评论已关闭',
-            style: TextStyle(
-              color: config.commentEnabled ? Colors.green : Colors.grey,
+    final theme = FeedMatterUiTheme.of(context);
+    return Material(
+      color: Colors.white,
+      child: InkWell(
+        onTap: loading ? null : onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          child: Center(
+            child: Text(
+              loading ? '加载中...' : '加载更多回复（$loaded/$total）',
+              style: TextStyle(
+                color: theme.primaryBlue,
+                fontSize: 14,
+              ),
             ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -331,50 +507,67 @@ class _CommentInputBar extends StatelessWidget {
   final TextEditingController controller;
   final bool enabled;
   final bool sending;
+  final bool pickingAttachments;
   final String? replyToName;
   final int maxLength;
   final String? hintText;
+  final List<fm.Attachment> attachments;
+  final int maxAttachments;
+  final bool showAttachmentButton;
   final VoidCallback onCancelReply;
+  final VoidCallback onPickAttachment;
+  final ValueChanged<fm.Attachment> onRemoveAttachment;
   final VoidCallback onSend;
 
   const _CommentInputBar({
     required this.controller,
     required this.enabled,
     required this.sending,
+    required this.pickingAttachments,
     required this.replyToName,
     required this.maxLength,
     required this.hintText,
+    required this.attachments,
+    required this.maxAttachments,
+    required this.showAttachmentButton,
     required this.onCancelReply,
+    required this.onPickAttachment,
+    required this.onRemoveAttachment,
     required this.onSend,
   });
 
   @override
   Widget build(BuildContext context) {
+    final theme = FeedMatterUiTheme.of(context);
+    final hasContent = controller.text.trim().isNotEmpty;
+    final canSend = (hasContent || attachments.isNotEmpty) && enabled && !sending;
+    final placeholder = replyToName != null
+        ? '回复 @$replyToName'
+        : (enabled ? (hintText ?? '写下你的评论...') : '评论功能已关闭');
+
     return SafeArea(
       top: false,
       child: Container(
         padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          boxShadow: const [
-            BoxShadow(
-              blurRadius: 10,
-              color: Colors.black12,
-              offset: Offset(0, -2),
-            ),
-          ],
+          color: Colors.white,
+          border: Border(top: BorderSide(color: theme.dividerColor)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (replyToName != null)
-              Row(
-                children: [
-                  Expanded(child: Text('正在回复 $replyToName')),
-                  TextButton(onPressed: onCancelReply, child: const Text('取消')),
-                ],
+            if (showAttachmentButton && attachments.isNotEmpty)
+              FeedMatterCommentAttachmentStrip(
+                attachments: attachments,
+                maxCount: maxAttachments,
+                picking: pickingAttachments,
+                enabled: enabled && !sending,
+                onAdd: onPickAttachment,
+                onRemove: onRemoveAttachment,
               ),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Expanded(
                   child: TextField(
@@ -383,23 +576,97 @@ class _CommentInputBar extends StatelessWidget {
                     maxLength: maxLength,
                     minLines: 1,
                     maxLines: 4,
+                    style: TextStyle(color: theme.textPrimary, fontSize: 14),
                     decoration: InputDecoration(
-                      hintText: enabled ? (hintText ?? '写下你的评论...') : '评论功能已关闭',
+                      hintText: placeholder,
+                      hintStyle:
+                          TextStyle(color: theme.textSecondary, fontSize: 14),
                       counterText: '',
-                      border: const OutlineInputBorder(),
+                      filled: true,
+                      fillColor: theme.inputBackground,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        borderSide: BorderSide.none,
+                      ),
+                      suffixIcon: replyToName != null
+                          ? IconButton(
+                              onPressed: onCancelReply,
+                              icon: Icon(
+                                Icons.close,
+                                size: 18,
+                                color: theme.textSecondary,
+                              ),
+                            )
+                          : null,
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                FilledButton(
-                  onPressed: enabled && !sending ? onSend : null,
-                  child: sending
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('发送'),
+                if (showAttachmentButton) ...[
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: enabled && !sending && !pickingAttachments
+                        ? onPickAttachment
+                        : null,
+                    icon: pickingAttachments
+                        ? SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: theme.textSecondary,
+                            ),
+                          )
+                        : Icon(
+                            Icons.add_photo_alternate_outlined,
+                            color: theme.textSecondary,
+                          ),
+                  ),
+                ],
+                const SizedBox(width: 4),
+                Material(
+                  color: canSend
+                      ? theme.sendButtonBackground
+                      : theme.sendButtonDisabledBackground,
+                  borderRadius: BorderRadius.circular(6),
+                  child: InkWell(
+                    onTap: canSend ? onSend : null,
+                    borderRadius: BorderRadius.circular(6),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      child: sending
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text(
+                              '发送',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                    ),
+                  ),
                 ),
               ],
             ),

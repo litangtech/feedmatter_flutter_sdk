@@ -12,6 +12,10 @@ dependencies:
     sdk: flutter
   feedmatter_flutter_sdk:
     path: ../../
+  file_picker:
+    git:
+      url: https://github.com/miguelpruivo/flutter_file_picker.git
+      ref: master
 
 dev_dependencies:
   flutter_test:

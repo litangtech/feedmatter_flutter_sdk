@@ -2,6 +2,7 @@ import 'package:feedmatter_flutter_sdk/feedmatter_flutter_sdk.dart' as fm;
 import 'package:flutter/material.dart';
 
 import '../feedmatter_ui_helpers.dart';
+import 'attachment_list.dart';
 
 class FeedMatterCommentFloorCard extends StatelessWidget {
   final fm.MainCommentWithReplies comment;
@@ -36,9 +37,18 @@ class FeedMatterCommentFloorCard extends StatelessWidget {
               author: comment.author,
               createdAt: comment.createdAt,
               pinned: comment.pinned,
+              isOfficial: _isOfficialMark(comment.mark),
             ),
             const SizedBox(height: 8),
             Text(comment.content),
+            if (comment.attachments != null &&
+                comment.attachments!.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              FeedMatterAttachmentList(
+                attachments: comment.attachments!,
+                showTitle: false,
+              ),
+            ],
             const SizedBox(height: 8),
             Align(
               alignment: Alignment.centerRight,
@@ -89,11 +99,13 @@ class _CommentHeader extends StatelessWidget {
   final fm.Author author;
   final DateTime createdAt;
   final bool pinned;
+  final bool isOfficial;
 
   const _CommentHeader({
     required this.author,
     required this.createdAt,
     required this.pinned,
+    this.isOfficial = false,
   });
 
   @override
@@ -118,6 +130,7 @@ class _CommentHeader extends StatelessWidget {
             style: const TextStyle(fontWeight: FontWeight.w600),
           ),
         ),
+        if (isOfficial) const _OfficialBadge(),
         if (pinned)
           Container(
             margin: const EdgeInsets.only(right: 8),
@@ -165,6 +178,13 @@ class _ReplyItem extends StatelessWidget {
                         text: authorName(reply.author),
                         style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
+                      if (_isOfficialMark(reply.mark)) ...[
+                        const TextSpan(text: ' '),
+                        const WidgetSpan(
+                          alignment: PlaceholderAlignment.middle,
+                          child: _OfficialBadge(compact: true),
+                        ),
+                      ],
                       if (parentName != null && parentName.isNotEmpty) ...[
                         const TextSpan(text: ' 回复 '),
                         TextSpan(
@@ -184,11 +204,52 @@ class _ReplyItem extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(reply.content),
+          if (reply.attachments != null && reply.attachments!.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            FeedMatterAttachmentList(
+              attachments: reply.attachments!,
+              showTitle: false,
+            ),
+          ],
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(onPressed: onReply, child: const Text('回复')),
           ),
         ],
+      ),
+    );
+  }
+}
+
+bool _isOfficialMark(fm.CommentMark? mark) {
+  if (mark == null) return false;
+  return mark.isAdmin || mark.isAdminReply;
+}
+
+class _OfficialBadge extends StatelessWidget {
+  final bool compact;
+
+  const _OfficialBadge({this.compact = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: EdgeInsets.only(right: compact ? 0 : 8),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 4 : 6,
+        vertical: compact ? 1 : 2,
+      ),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primary.withAlpha(31),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        '官方',
+        style: TextStyle(
+          fontSize: compact ? 10 : 12,
+          color: Theme.of(context).colorScheme.primary,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }

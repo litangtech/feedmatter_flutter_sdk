@@ -18,4 +18,5 @@ export 'src/constants.dart';
 export 'src/models/faq_item.dart';
 export 'src/models/faq_list_response.dart';
 export 'src/models/feedback_mark.dart';
+export 'src/models/comment_mark.dart';
 export 'src/models/project_config.dart';

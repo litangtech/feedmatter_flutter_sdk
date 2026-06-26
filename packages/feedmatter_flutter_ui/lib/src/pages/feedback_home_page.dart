@@ -56,7 +56,6 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage>
 
   void _onTabChanged() {
     if (_tabController.indexIsChanging) return;
-    setState(() {});
     _loadFeedbacks(forMine: _tabController.index == 1);
   }
 
@@ -254,8 +253,8 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage>
           if (shouldShowProjectConfigDebugPanel(widget.options))
             _ProjectConfigPanel(loading: _loadingConfig, config: _config),
           FeedMatterPillTabBar(
-            selectedIndex: _tabController.index,
-            onChanged: (index) => _tabController.animateTo(index),
+            controller: _tabController,
+            onTap: (index) => _tabController.animateTo(index),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),

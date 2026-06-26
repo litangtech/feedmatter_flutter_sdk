@@ -71,94 +71,102 @@ class _FeedMatterExampleAppState extends State<FeedMatterExampleApp> {
     );
   }
 
+  FeedMatterUiOptions get _uiOptions => FeedMatterUiOptions(
+        theme: FeedMatterThemeOptions(
+          mode: _themeMode,
+          seedColor: _seedColor,
+        ),
+        customInfo: const {
+          'source': 'feedmatter_flutter_sdk_example',
+          'ui': 'feedmatter_flutter_ui',
+        },
+        onContentUrlTap: (url) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('链接点击：$url')),
+          );
+        },
+        onFaqUrlTap: (url) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('FAQ 链接：$url')),
+          );
+        },
+      );
+
+  void _openFeedback() {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => FeedMatterFeedbackEntry(options: _uiOptions),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Material(
-          color: Theme.of(context).colorScheme.surface,
-          child: SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '主题演示',
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                  const SizedBox(height: 8),
-                  SegmentedButton<FeedMatterThemeMode>(
-                    segments: const [
-                      ButtonSegment(
-                        value: FeedMatterThemeMode.light,
-                        label: Text('浅色'),
-                      ),
-                      ButtonSegment(
-                        value: FeedMatterThemeMode.dark,
-                        label: Text('深色'),
-                      ),
-                      ButtonSegment(
-                        value: FeedMatterThemeMode.system,
-                        label: Text('跟随系统'),
-                      ),
-                    ],
-                    selected: {_themeMode},
-                    onSelectionChanged: (selection) {
-                      setState(() => _themeMode = selection.first);
-                    },
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    children: [
-                      for (final color in _seedColorOptions)
-                        ChoiceChip(
-                          label: Text(
-                            '#${color.value.toRadixString(16).substring(2).toUpperCase()}',
-                            style: TextStyle(
-                              color: _seedColor == color
-                                  ? Colors.white
-                                  : null,
-                            ),
-                          ),
-                          selected: _seedColor == color,
-                          selectedColor: color,
-                          onSelected: (_) => setState(() => _seedColor = color),
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
+    return Scaffold(
+      appBar: AppBar(title: const Text('FeedMatter Demo')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Text('主题设置', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          Text(
+            '调整下方选项后，进入意见反馈页查看效果。',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
           ),
-        ),
-        Expanded(
-          child: FeedMatterFeedbackEntry(
-            options: FeedMatterUiOptions(
-              theme: FeedMatterThemeOptions(
-                mode: _themeMode,
-                seedColor: _seedColor,
+          const SizedBox(height: 16),
+          Text('主题模式', style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 8),
+          SegmentedButton<FeedMatterThemeMode>(
+            segments: const [
+              ButtonSegment(
+                value: FeedMatterThemeMode.light,
+                label: Text('浅色'),
               ),
-              customInfo: const {
-                'source': 'feedmatter_flutter_sdk_example',
-                'ui': 'feedmatter_flutter_ui',
-              },
-              onContentUrlTap: (url) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('链接点击：$url')),
-                );
-              },
-              onFaqUrlTap: (url) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('FAQ 链接：$url')),
-                );
-              },
-            ),
+              ButtonSegment(
+                value: FeedMatterThemeMode.dark,
+                label: Text('深色'),
+              ),
+              ButtonSegment(
+                value: FeedMatterThemeMode.system,
+                label: Text('跟随系统'),
+              ),
+            ],
+            selected: {_themeMode},
+            onSelectionChanged: (selection) {
+              setState(() => _themeMode = selection.first);
+            },
           ),
-        ),
-      ],
+          const SizedBox(height: 24),
+          Text('主题色', style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final color in _seedColorOptions)
+                ChoiceChip(
+                  label: Text(
+                    '#${color.value.toRadixString(16).substring(2).toUpperCase()}',
+                    style: TextStyle(
+                      color: _seedColor == color ? Colors.white : null,
+                    ),
+                  ),
+                  selected: _seedColor == color,
+                  selectedColor: color,
+                  onSelected: (_) => setState(() => _seedColor = color),
+                ),
+            ],
+          ),
+          const SizedBox(height: 32),
+          FilledButton.icon(
+            onPressed: _openFeedback,
+            icon: const Icon(Icons.feedback_outlined),
+            label: const Text('进入意见反馈'),
+          ),
+        ],
+      ),
     );
   }
 }

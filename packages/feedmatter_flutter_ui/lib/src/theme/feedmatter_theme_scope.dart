@@ -32,6 +32,28 @@ class FeedMatterThemeScope extends StatelessWidget {
     return seedColor ?? Theme.of(context).colorScheme.primary;
   }
 
+  /// Applies FeedMatter [ThemeData] and an immediate page background color.
+  static Widget wrap({
+    required BuildContext context,
+    required FeedMatterThemeOptions options,
+    required Widget child,
+  }) {
+    final brightness = resolveBrightness(context, options.mode);
+    final seedColor = resolveSeedColor(context, options.seedColor);
+    final tokens = FeedMatterUiTheme.forBrightness(
+      brightness,
+      seedColor: seedColor,
+    );
+    final themeData = buildFeedMatterTheme(
+      brightness: brightness,
+      seedColor: seedColor,
+    );
+    return ColoredBox(
+      color: tokens.pageBackground,
+      child: Theme(data: themeData, child: child),
+    );
+  }
+
   /// Pushes [child] wrapped in a FeedMatter theme scope.
   ///
   /// Required because routes pushed onto the root [Navigator] sit outside
@@ -43,7 +65,8 @@ class FeedMatterThemeScope extends StatelessWidget {
   }) {
     return Navigator.of(context).push<T>(
       MaterialPageRoute(
-        builder: (_) => FeedMatterThemeScope(
+        builder: (routeContext) => wrap(
+          context: routeContext,
           options: theme,
           child: child,
         ),
@@ -53,12 +76,6 @@ class FeedMatterThemeScope extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final brightness = resolveBrightness(context, options.mode);
-    final seedColor = resolveSeedColor(context, options.seedColor);
-    final themeData = buildFeedMatterTheme(
-      brightness: brightness,
-      seedColor: seedColor,
-    );
-    return Theme(data: themeData, child: child);
+    return wrap(context: context, options: options, child: child);
   }
 }

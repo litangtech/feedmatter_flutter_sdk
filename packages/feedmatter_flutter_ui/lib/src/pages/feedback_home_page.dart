@@ -120,13 +120,16 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage>
     }
   }
 
-  void _onHelpTap() {
+  void _onHelpTap(BuildContext scopedContext) {
     final handler = widget.options.onHelpTap;
     if (handler != null) {
       handler();
       return;
     }
-    showFeedMatterHelpTipsSheet(context);
+    showFeedMatterHelpTipsSheet(
+      scopedContext,
+      theme: widget.options.theme,
+    );
   }
 
   @override
@@ -152,7 +155,7 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage>
         ),
         actions: [
           IconButton(
-            onPressed: _onHelpTap,
+            onPressed: () => _onHelpTap(context),
             icon: const Icon(Icons.help_outline),
           ),
         ],

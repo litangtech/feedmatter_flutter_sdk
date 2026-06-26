@@ -80,20 +80,25 @@ class _FeedMatterFeedbackEntryState extends State<FeedMatterFeedbackEntry> {
     );
   }
 
-  void _onHelpTap() {
+  void _onHelpTap(BuildContext scopedContext) {
     final handler = widget.options.onHelpTap;
     if (handler != null) {
       handler();
       return;
     }
-    showFeedMatterHelpTipsSheet(context);
+    showFeedMatterHelpTipsSheet(
+      scopedContext,
+      theme: widget.options.theme,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return FeedMatterThemeScope(
       options: widget.options.theme,
-      child: _buildContent(context),
+      child: Builder(
+        builder: (context) => _buildContent(context),
+      ),
     );
   }
 
@@ -101,7 +106,10 @@ class _FeedMatterFeedbackEntryState extends State<FeedMatterFeedbackEntry> {
     final theme = FeedMatterUiTheme.of(context);
 
     if (_loadingConfig) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        backgroundColor: theme.pageBackground,
+        body: const Center(child: CircularProgressIndicator()),
+      );
     }
 
     if (!_config.faqEnabled) {
@@ -122,7 +130,7 @@ class _FeedMatterFeedbackEntryState extends State<FeedMatterFeedbackEntry> {
         ),
         actions: [
           IconButton(
-            onPressed: _onHelpTap,
+            onPressed: () => _onHelpTap(context),
             icon: const Icon(Icons.help_outline),
           ),
         ],

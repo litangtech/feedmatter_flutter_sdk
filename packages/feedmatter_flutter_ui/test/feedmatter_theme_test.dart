@@ -176,5 +176,60 @@ void main() {
 
       expect(surfaceColor, const Color(0xFF1E1E1E));
     });
+
+    testWidgets('outer context misses scoped FeedMatter theme', (tester) async {
+      Color? surfaceColor;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (outerContext) {
+              return FeedMatterThemeScope(
+                options: const FeedMatterThemeOptions(
+                  mode: FeedMatterThemeMode.dark,
+                ),
+                child: Builder(
+                  builder: (_) {
+                    surfaceColor =
+                        FeedMatterUiTheme.of(outerContext).surfaceColor;
+                    return const SizedBox.shrink();
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+      );
+
+      expect(surfaceColor, Colors.white);
+    });
+
+    testWidgets('wrap paints page background immediately', (tester) async {
+      Color? backgroundColor;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData.light(),
+          home: Builder(
+            builder: (context) {
+              return FeedMatterThemeScope.wrap(
+                context: context,
+                options: const FeedMatterThemeOptions(
+                  mode: FeedMatterThemeMode.dark,
+                ),
+                child: Builder(
+                  builder: (context) {
+                    backgroundColor = FeedMatterUiTheme.of(context).pageBackground;
+                    return const SizedBox.shrink();
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+      );
+
+      expect(backgroundColor, const Color(0xFF121212));
+    });
   });
 }

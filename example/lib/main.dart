@@ -93,10 +93,13 @@ class _FeedMatterExampleAppState extends State<FeedMatterExampleApp> {
       );
 
   void _openFeedback() {
-    Navigator.of(context).push<void>(
-      MaterialPageRoute(
-        builder: (_) => FeedMatterFeedbackEntry(options: _uiOptions),
+    FeedMatterThemeScope.push<void>(
+      context,
+      theme: FeedMatterThemeOptions(
+        mode: _themeMode,
+        seedColor: _seedColor,
       ),
+      child: FeedMatterFeedbackEntry(options: _uiOptions),
     );
   }
 

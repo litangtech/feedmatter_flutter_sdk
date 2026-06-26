@@ -149,6 +149,9 @@ ThemeData buildFeedMatterTheme({
   final colorScheme = ColorScheme.fromSeed(
     seedColor: tokens.primaryBlue,
     brightness: brightness,
+  ).copyWith(
+    surface: tokens.surfaceColor,
+    onSurface: tokens.textPrimary,
   );
   final theme = base ??
       ThemeData(
@@ -162,6 +165,7 @@ ThemeData buildFeedMatterTheme({
     appBarTheme: AppBarTheme(
       backgroundColor: tokens.surfaceColor,
       foregroundColor: tokens.textPrimary,
+      surfaceTintColor: Colors.transparent,
       elevation: 0,
       scrolledUnderElevation: 0,
     ),

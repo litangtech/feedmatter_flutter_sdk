@@ -134,5 +134,47 @@ void main() {
 
       expect(primaryBlue, expectedPrimary);
     });
+
+    testWidgets('push wraps route with FeedMatter theme', (tester) async {
+      Color? surfaceColor;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData.light(),
+          home: FeedMatterThemeScope(
+            options: const FeedMatterThemeOptions(
+              mode: FeedMatterThemeMode.dark,
+            ),
+            child: Builder(
+              builder: (context) {
+                return ElevatedButton(
+                  onPressed: () {
+                    FeedMatterThemeScope.push<void>(
+                      context,
+                      theme: const FeedMatterThemeOptions(
+                        mode: FeedMatterThemeMode.dark,
+                      ),
+                      child: Builder(
+                        builder: (routeContext) {
+                          surfaceColor =
+                              FeedMatterUiTheme.of(routeContext).surfaceColor;
+                          return const Scaffold(body: SizedBox());
+                        },
+                      ),
+                    );
+                  },
+                  child: const Text('open'),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+
+      expect(surfaceColor, const Color(0xFF1E1E1E));
+    });
   });
 }

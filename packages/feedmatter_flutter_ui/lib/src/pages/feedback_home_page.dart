@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../feedmatter_ui_helpers.dart';
 import '../feedmatter_ui_options.dart';
+import '../theme/feedmatter_theme_scope.dart';
 import '../theme/feedmatter_ui_theme.dart';
 import '../widgets/feedmatter_help_tips_sheet.dart';
 import '../widgets/feedmatter_pill_tab_bar.dart';
@@ -79,11 +80,10 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage>
       showFeedMatterSnackBar(context, '当前项目已关闭反馈发布', isError: true);
       return;
     }
-    final created = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) =>
-            FeedMatterSubmitPage(config: _config, options: widget.options),
-      ),
+    final created = await FeedMatterThemeScope.push<bool>(
+      context,
+      theme: widget.options.theme,
+      child: FeedMatterSubmitPage(config: _config, options: widget.options),
     );
     if (created == true) {
       await _reloadAllTabs();
@@ -91,13 +91,13 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage>
   }
 
   Future<void> _openDetailPage(fm.Feedback feedback) async {
-    final changed = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => FeedMatterDetailPage(
-          feedbackId: feedback.id,
-          config: _config,
-          options: widget.options,
-        ),
+    final changed = await FeedMatterThemeScope.push<bool>(
+      context,
+      theme: widget.options.theme,
+      child: FeedMatterDetailPage(
+        feedbackId: feedback.id,
+        config: _config,
+        options: widget.options,
       ),
     );
     if (changed == true) {
@@ -143,6 +143,7 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage>
       appBar: AppBar(
         backgroundColor: theme.surfaceColor,
         foregroundColor: theme.textPrimary,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
         title: const Text(

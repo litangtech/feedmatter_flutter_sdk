@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../faq/faq_cache.dart';
 import '../feedmatter_ui_helpers.dart';
 import '../feedmatter_ui_options.dart';
+import '../theme/feedmatter_theme_scope.dart';
 import '../theme/feedmatter_ui_theme.dart';
 import '../widgets/feedmatter_link_text.dart';
 import '../widgets/feedmatter_search_bar.dart';
@@ -97,12 +98,12 @@ class _FeedMatterFaqPageState extends State<FeedMatterFaqPage> {
       showFeedMatterSnackBar(context, '当前项目已关闭反馈发布', isError: true);
       return;
     }
-    await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => FeedMatterSubmitPage(
-          config: widget.config,
-          options: widget.options,
-        ),
+    await FeedMatterThemeScope.push<bool>(
+      context,
+      theme: widget.options.theme,
+      child: FeedMatterSubmitPage(
+        config: widget.config,
+        options: widget.options,
       ),
     );
   }
@@ -127,6 +128,7 @@ class _FeedMatterFaqPageState extends State<FeedMatterFaqPage> {
       appBar: AppBar(
         backgroundColor: theme.surfaceColor,
         foregroundColor: theme.textPrimary,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
         title: const Text(

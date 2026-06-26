@@ -58,11 +58,10 @@ class _FeedMatterFeedbackEntryState extends State<FeedMatterFeedbackEntry> {
       showFeedMatterSnackBar(context, '当前项目已关闭反馈发布', isError: true);
       return;
     }
-    final created = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) =>
-            FeedMatterSubmitPage(config: _config, options: widget.options),
-      ),
+    final created = await FeedMatterThemeScope.push<bool>(
+      context,
+      theme: widget.options.theme,
+      child: FeedMatterSubmitPage(config: _config, options: widget.options),
     );
     if (created == true && mounted) {
       setState(() => _homeRefreshKey++);
@@ -70,13 +69,13 @@ class _FeedMatterFeedbackEntryState extends State<FeedMatterFeedbackEntry> {
   }
 
   Future<void> _openFaqPage() async {
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute(
-        builder: (_) => FeedMatterFaqPage(
-          config: _config,
-          options: widget.options,
-          onSubmitFeedback: _openSubmitPage,
-        ),
+    await FeedMatterThemeScope.push<void>(
+      context,
+      theme: widget.options.theme,
+      child: FeedMatterFaqPage(
+        config: _config,
+        options: widget.options,
+        onSubmitFeedback: _openSubmitPage,
       ),
     );
   }
@@ -114,6 +113,7 @@ class _FeedMatterFeedbackEntryState extends State<FeedMatterFeedbackEntry> {
       appBar: AppBar(
         backgroundColor: theme.surfaceColor,
         foregroundColor: theme.textPrimary,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
         title: const Text(

@@ -32,6 +32,25 @@ class FeedMatterThemeScope extends StatelessWidget {
     return seedColor ?? Theme.of(context).colorScheme.primary;
   }
 
+  /// Pushes [child] wrapped in a FeedMatter theme scope.
+  ///
+  /// Required because routes pushed onto the root [Navigator] sit outside
+  /// an ancestor [FeedMatterThemeScope] and would otherwise lose theme tokens.
+  static Future<T?> push<T extends Object?>(
+    BuildContext context, {
+    required FeedMatterThemeOptions theme,
+    required Widget child,
+  }) {
+    return Navigator.of(context).push<T>(
+      MaterialPageRoute(
+        builder: (_) => FeedMatterThemeScope(
+          options: theme,
+          child: child,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final brightness = resolveBrightness(context, options.mode);

@@ -32,14 +32,18 @@ const _helpTips = [
 ];
 
 void showFeedMatterHelpTipsSheet(BuildContext context) {
-  final theme = FeedMatterUiTheme.of(context);
+  final tokens = FeedMatterUiTheme.of(context);
+  final materialTheme = Theme.of(context);
   showModalBottomSheet<void>(
     context: context,
-    backgroundColor: theme.surfaceColor,
+    backgroundColor: tokens.surfaceColor,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
     ),
-    builder: (context) => const _FeedMatterHelpTipsSheet(),
+    builder: (_) => Theme(
+      data: materialTheme,
+      child: const _FeedMatterHelpTipsSheet(),
+    ),
   );
 }
 

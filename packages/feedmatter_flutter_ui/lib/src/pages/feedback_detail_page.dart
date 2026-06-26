@@ -235,6 +235,7 @@ class _FeedMatterDetailPageState extends State<FeedMatterDetailPage> {
       appBar: AppBar(
         backgroundColor: theme.surfaceColor,
         foregroundColor: theme.textPrimary,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
         title: const Text(

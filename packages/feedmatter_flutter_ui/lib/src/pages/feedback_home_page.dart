@@ -158,7 +158,6 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage> {
   Widget build(BuildContext context) {
     final theme = FeedMatterUiTheme.of(context);
     final body = _buildBody();
-    final showFab = widget.showFloatingSubmit && !widget.embedded;
 
     if (widget.embedded) {
       return body;
@@ -182,9 +181,10 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage> {
           ),
         ],
       ),
-      body: FeedMatterSubmitFabOverlay(
-        visible: showFab,
-        onPressed: _loadingConfig ? null : _openSubmitPage,
+      body: FeedMatterBottomActionOverlay(
+        rightAction: FeedMatterSubmitFab(
+          onPressed: _loadingConfig ? null : _openSubmitPage,
+        ),
         child: body,
       ),
     );
@@ -234,7 +234,7 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage> {
 
   Widget _buildList({required bool reserveFabSpace}) {
     final bottomPadding = reserveFabSpace
-        ? FeedMatterSubmitFabOverlay.fabClearance
+        ? FeedMatterBottomActionOverlay.actionClearance
         : 16.0;
 
     if (_loading) {

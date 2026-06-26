@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../faq/faq_cache.dart';
 import '../feedmatter_ui_helpers.dart';
 import '../feedmatter_ui_options.dart';
+import '../theme/feedmatter_ui_theme.dart';
 import 'feedback_submit_page.dart';
 
 class FeedMatterFaqPage extends StatefulWidget {
@@ -149,12 +150,18 @@ class _FeedMatterFaqPageState extends State<FeedMatterFaqPage> {
       return content;
     }
 
+    final theme = FeedMatterUiTheme.of(context);
     return Scaffold(
+      backgroundColor: theme.pageBackground,
       appBar: AppBar(
-        title: const Text('常见问题'),
-        actions: [
-          IconButton(onPressed: _loadFaqs, icon: const Icon(Icons.refresh)),
-        ],
+        backgroundColor: Colors.white,
+        foregroundColor: theme.textPrimary,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        title: const Text(
+          '常见问题',
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+        ),
       ),
       body: content,
     );

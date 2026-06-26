@@ -22,29 +22,15 @@ class FeedMatterFeedbackEntry extends StatefulWidget {
       _FeedMatterFeedbackEntryState();
 }
 
-class _FeedMatterFeedbackEntryState extends State<FeedMatterFeedbackEntry>
-    with SingleTickerProviderStateMixin {
+class _FeedMatterFeedbackEntryState extends State<FeedMatterFeedbackEntry> {
   fm.ProjectConfig _config = fm.ProjectConfig.defaultConfig();
   bool _loadingConfig = true;
   int _homeRefreshKey = 0;
-  late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(() {
-      if (!_tabController.indexIsChanging) {
-        setState(() {});
-      }
-    });
     _loadConfig();
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
   }
 
   Future<void> _loadConfig() async {
@@ -81,6 +67,18 @@ class _FeedMatterFeedbackEntryState extends State<FeedMatterFeedbackEntry>
     }
   }
 
+  Future<void> _openFaqPage() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => FeedMatterFaqPage(
+          config: _config,
+          options: widget.options,
+          onSubmitFeedback: _openSubmitPage,
+        ),
+      ),
+    );
+  }
+
   void _onHelpTap() {
     final handler = widget.options.onHelpTap;
     if (handler != null) {
@@ -102,8 +100,6 @@ class _FeedMatterFeedbackEntryState extends State<FeedMatterFeedbackEntry>
       return FeedMatterHomePage(options: widget.options);
     }
 
-    final showFeedbackFab = _tabController.index == 0;
-
     return Scaffold(
       backgroundColor: theme.pageBackground,
       appBar: AppBar(
@@ -112,7 +108,7 @@ class _FeedMatterFeedbackEntryState extends State<FeedMatterFeedbackEntry>
         elevation: 0,
         scrolledUnderElevation: 0,
         title: const Text(
-          '帮助与反馈',
+          '意见反馈',
           style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
         ),
         actions: [
@@ -121,37 +117,21 @@ class _FeedMatterFeedbackEntryState extends State<FeedMatterFeedbackEntry>
             icon: const Icon(Icons.help_outline),
           ),
         ],
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: theme.primaryBlue,
-          unselectedLabelColor: theme.textSecondary,
-          indicatorColor: theme.primaryBlue,
-          indicatorSize: TabBarIndicatorSize.label,
-          tabs: const [
-            Tab(text: '反馈列表'),
-            Tab(text: '常见问题'),
-          ],
-        ),
       ),
-      body: FeedMatterSubmitFabOverlay(
-        visible: showFeedbackFab,
-        onPressed: _openSubmitPage,
-        child: TabBarView(
-          controller: _tabController,
-          children: [
-            FeedMatterHomePage(
-              key: ValueKey(_homeRefreshKey),
-              options: widget.options,
-              embedded: true,
-              showFloatingSubmit: false,
-            ),
-            FeedMatterFaqPage(
-              config: _config,
-              options: widget.options,
-              embedded: true,
-              onSubmitFeedback: _openSubmitPage,
-            ),
-          ],
+      body: FeedMatterBottomActionOverlay(
+        leftAction: FeedMatterBottomPill(
+          onPressed: _openFaqPage,
+          label: '常见问题',
+          icon: Icons.quiz_outlined,
+        ),
+        rightAction: FeedMatterSubmitFab(
+          onPressed: _loadingConfig ? null : _openSubmitPage,
+        ),
+        child: FeedMatterHomePage(
+          key: ValueKey(_homeRefreshKey),
+          options: widget.options,
+          embedded: true,
+          showFloatingSubmit: false,
         ),
       ),
     );

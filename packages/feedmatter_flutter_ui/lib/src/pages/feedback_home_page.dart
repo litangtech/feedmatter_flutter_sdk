@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../feedmatter_ui_helpers.dart';
 import '../feedmatter_ui_options.dart';
 import '../theme/feedmatter_ui_theme.dart';
+import '../widgets/feedmatter_help_tips_sheet.dart';
 import '../widgets/feedmatter_pill_tab_bar.dart';
 import '../widgets/feedmatter_submit_fab.dart';
 import 'feedback_all_tab.dart';
@@ -125,7 +126,7 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage>
       handler();
       return;
     }
-    showFeedMatterSnackBar(context, '请通过 FeedMatterUiOptions.onHelpTap 配置帮助页');
+    showFeedMatterHelpTipsSheet(context);
   }
 
   @override

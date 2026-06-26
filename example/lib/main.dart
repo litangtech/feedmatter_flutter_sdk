@@ -68,11 +68,6 @@ class _FeedMatterExampleAppState extends State<FeedMatterExampleApp> {
           'source': 'feedmatter_flutter_sdk_example',
           'ui': 'feedmatter_flutter_ui',
         },
-        onHelpTap: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('帮助页面示例：请接入你的帮助文档')),
-          );
-        },
         onContentUrlTap: (url) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('链接点击：$url')),

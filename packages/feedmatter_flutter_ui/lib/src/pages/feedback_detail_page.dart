@@ -6,6 +6,7 @@ import '../feedmatter_ui_helpers.dart';
 import '../feedmatter_ui_options.dart';
 import '../theme/feedmatter_ui_theme.dart';
 import '../widgets/attachment_list.dart';
+import '../widgets/feedmatter_comment_attachment_strip.dart';
 import '../widgets/feedmatter_comment_row.dart';
 import '../widgets/feedmatter_link_text.dart';
 import '../widgets/feedmatter_tag.dart';
@@ -139,8 +140,8 @@ class _FeedMatterDetailPageState extends State<FeedMatterDetailPage> {
       return;
     }
     final content = _commentController.text.trim();
-    if (content.isEmpty) {
-      showFeedMatterSnackBar(context, '请输入评论内容', isError: true);
+    if (content.isEmpty && _commentAttachments.isEmpty) {
+      showFeedMatterSnackBar(context, '请输入评论内容或添加图片', isError: true);
       return;
     }
     if (content.length > widget.config.commentMaxContentLength) {
@@ -276,6 +277,8 @@ class _FeedMatterDetailPageState extends State<FeedMatterDetailPage> {
                       replyToName: _replyToName,
                       maxLength: widget.config.commentMaxContentLength,
                       hintText: widget.config.commentPrompt,
+                      attachments: _commentAttachments,
+                      maxAttachments: widget.config.maxAttachments,
                       showAttachmentButton:
                           widget.config.commentAttachmentEnabled &&
                               (widget.options.onPickAttachments != null ||
@@ -283,6 +286,13 @@ class _FeedMatterDetailPageState extends State<FeedMatterDetailPage> {
                                       .useDefaultAttachmentPicker),
                       onCancelReply: _clearReplyTarget,
                       onPickAttachment: _pickCommentAttachments,
+                      onRemoveAttachment: (attachment) {
+                        setState(() {
+                          _commentAttachments = _commentAttachments
+                              .where((item) => item != attachment)
+                              .toList();
+                        });
+                      },
                       onSend: _sendComment,
                     ),
                   ],
@@ -501,9 +511,12 @@ class _CommentInputBar extends StatelessWidget {
   final String? replyToName;
   final int maxLength;
   final String? hintText;
+  final List<fm.Attachment> attachments;
+  final int maxAttachments;
   final bool showAttachmentButton;
   final VoidCallback onCancelReply;
   final VoidCallback onPickAttachment;
+  final ValueChanged<fm.Attachment> onRemoveAttachment;
   final VoidCallback onSend;
 
   const _CommentInputBar({
@@ -514,9 +527,12 @@ class _CommentInputBar extends StatelessWidget {
     required this.replyToName,
     required this.maxLength,
     required this.hintText,
+    required this.attachments,
+    required this.maxAttachments,
     required this.showAttachmentButton,
     required this.onCancelReply,
     required this.onPickAttachment,
+    required this.onRemoveAttachment,
     required this.onSend,
   });
 
@@ -524,6 +540,7 @@ class _CommentInputBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = FeedMatterUiTheme.of(context);
     final hasContent = controller.text.trim().isNotEmpty;
+    final canSend = (hasContent || attachments.isNotEmpty) && enabled && !sending;
     final placeholder = replyToName != null
         ? '回复 @$replyToName'
         : (enabled ? (hintText ?? '写下你的评论...') : '评论功能已关闭');
@@ -536,98 +553,122 @@ class _CommentInputBar extends StatelessWidget {
           color: Colors.white,
           border: Border(top: BorderSide(color: theme.dividerColor)),
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Expanded(
-              child: TextField(
-                controller: controller,
+            if (showAttachmentButton && attachments.isNotEmpty)
+              FeedMatterCommentAttachmentStrip(
+                attachments: attachments,
+                maxCount: maxAttachments,
+                picking: pickingAttachments,
                 enabled: enabled && !sending,
-                maxLength: maxLength,
-                minLines: 1,
-                maxLines: 4,
-                style: TextStyle(color: theme.textPrimary, fontSize: 14),
-                decoration: InputDecoration(
-                  hintText: placeholder,
-                  hintStyle: TextStyle(color: theme.textSecondary, fontSize: 14),
-                  counterText: '',
-                  filled: true,
-                  fillColor: theme.inputBackground,
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(20),
-                    borderSide: BorderSide.none,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(20),
-                    borderSide: BorderSide.none,
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(20),
-                    borderSide: BorderSide.none,
-                  ),
-                  suffixIcon: replyToName != null
-                      ? IconButton(
-                          onPressed: onCancelReply,
-                          icon: Icon(Icons.close, size: 18, color: theme.textSecondary),
-                        )
-                      : null,
-                ),
+                onAdd: onPickAttachment,
+                onRemove: onRemoveAttachment,
               ),
-            ),
-            if (showAttachmentButton) ...[
-              const SizedBox(width: 8),
-              IconButton(
-                onPressed: enabled && !sending && !pickingAttachments
-                    ? onPickAttachment
-                    : null,
-                icon: pickingAttachments
-                    ? SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: theme.textSecondary,
-                        ),
-                      )
-                    : Icon(
-                        Icons.add_photo_alternate_outlined,
-                        color: theme.textSecondary,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: controller,
+                    enabled: enabled && !sending,
+                    maxLength: maxLength,
+                    minLines: 1,
+                    maxLines: 4,
+                    style: TextStyle(color: theme.textPrimary, fontSize: 14),
+                    decoration: InputDecoration(
+                      hintText: placeholder,
+                      hintStyle:
+                          TextStyle(color: theme.textSecondary, fontSize: 14),
+                      counterText: '',
+                      filled: true,
+                      fillColor: theme.inputBackground,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
                       ),
-              ),
-            ],
-            const SizedBox(width: 4),
-            Material(
-              color: hasContent && enabled && !sending
-                  ? theme.sendButtonBackground
-                  : theme.sendButtonDisabledBackground,
-              borderRadius: BorderRadius.circular(6),
-              child: InkWell(
-                onTap: hasContent && enabled && !sending ? onSend : null,
-                borderRadius: BorderRadius.circular(6),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  child: sending
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text(
-                          '发送',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        borderSide: BorderSide.none,
+                      ),
+                      suffixIcon: replyToName != null
+                          ? IconButton(
+                              onPressed: onCancelReply,
+                              icon: Icon(
+                                Icons.close,
+                                size: 18,
+                                color: theme.textSecondary,
+                              ),
+                            )
+                          : null,
+                    ),
+                  ),
                 ),
-              ),
+                if (showAttachmentButton) ...[
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: enabled && !sending && !pickingAttachments
+                        ? onPickAttachment
+                        : null,
+                    icon: pickingAttachments
+                        ? SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: theme.textSecondary,
+                            ),
+                          )
+                        : Icon(
+                            Icons.add_photo_alternate_outlined,
+                            color: theme.textSecondary,
+                          ),
+                  ),
+                ],
+                const SizedBox(width: 4),
+                Material(
+                  color: canSend
+                      ? theme.sendButtonBackground
+                      : theme.sendButtonDisabledBackground,
+                  borderRadius: BorderRadius.circular(6),
+                  child: InkWell(
+                    onTap: canSend ? onSend : null,
+                    borderRadius: BorderRadius.circular(6),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      child: sending
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text(
+                              '发送',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),

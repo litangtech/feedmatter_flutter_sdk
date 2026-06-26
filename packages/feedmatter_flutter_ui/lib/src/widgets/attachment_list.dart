@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 
 class FeedMatterAttachmentList extends StatelessWidget {
   final List<fm.Attachment> attachments;
+  final bool showTitle;
 
   const FeedMatterAttachmentList({
     super.key,
     required this.attachments,
+    this.showTitle = true,
   });
 
   @override
@@ -25,8 +27,10 @@ class FeedMatterAttachmentList extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('附件', style: Theme.of(context).textTheme.titleSmall),
-        const SizedBox(height: 8),
+        if (showTitle) ...[
+          Text('附件', style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 8),
+        ],
         if (images.isNotEmpty) ...[
           GridView.builder(
             shrinkWrap: true,

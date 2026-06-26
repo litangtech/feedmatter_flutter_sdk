@@ -4,11 +4,13 @@ import 'package:flutter/material.dart';
 class FeedMatterAttachmentList extends StatelessWidget {
   final List<fm.Attachment> attachments;
   final bool showTitle;
+  final bool compact;
 
   const FeedMatterAttachmentList({
     super.key,
     required this.attachments,
     this.showTitle = true,
+    this.compact = false,
   });
 
   @override
@@ -23,6 +25,13 @@ class FeedMatterAttachmentList extends StatelessWidget {
     final others = attachments
         .where((item) => item.fileType != fm.FileType.IMG || item.fileUrl == null)
         .toList();
+
+    if (compact && images.isNotEmpty) {
+      return _CompactImageThumbnail(
+        attachment: images.first,
+        onTap: () => _openImagePreview(context, images.first),
+      );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -89,6 +98,41 @@ class FeedMatterAttachmentList extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _CompactImageThumbnail extends StatelessWidget {
+  final fm.Attachment attachment;
+  final VoidCallback onTap;
+
+  const _CompactImageThumbnail({
+    required this.attachment,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final url = attachment.fileUrl;
+    return Material(
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(8),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(
+          width: 88,
+          height: 88,
+          child: url == null
+              ? const Center(child: Icon(Icons.broken_image_outlined))
+              : Image.network(
+                  url,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) =>
+                      const Center(child: Icon(Icons.broken_image_outlined)),
+                ),
+        ),
+      ),
     );
   }
 }

@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 
 import '../feedmatter_ui_helpers.dart';
 import '../feedmatter_ui_options.dart';
+import '../theme/feedmatter_ui_theme.dart';
+import '../widgets/feedmatter_pill_tab_bar.dart';
+import '../widgets/feedmatter_search_bar.dart';
+import '../widgets/feedmatter_submit_fab.dart';
 import 'feedback_detail_page.dart';
 import 'feedback_submit_page.dart';
 import '../widgets/feedback_card.dart';
@@ -10,11 +14,13 @@ import '../widgets/feedback_card.dart';
 class FeedMatterHomePage extends StatefulWidget {
   final FeedMatterUiOptions options;
   final bool embedded;
+  final bool showFloatingSubmit;
 
   const FeedMatterHomePage({
     super.key,
     this.options = const FeedMatterUiOptions(),
     this.embedded = false,
+    this.showFloatingSubmit = true,
   });
 
   @override
@@ -139,101 +145,128 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage> {
     }
   }
 
+  void _onHelpTap() {
+    final handler = widget.options.onHelpTap;
+    if (handler != null) {
+      handler();
+      return;
+    }
+    showFeedMatterSnackBar(context, '请通过 FeedMatterUiOptions.onHelpTap 配置帮助页');
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = FeedMatterUiTheme.of(context);
     final body = _buildBody();
+    final showFab = widget.showFloatingSubmit && !widget.embedded;
+
     if (widget.embedded) {
       return body;
     }
+
     return Scaffold(
+      backgroundColor: theme.pageBackground,
       appBar: AppBar(
-        title: const Text('用户反馈'),
+        backgroundColor: Colors.white,
+        foregroundColor: theme.textPrimary,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        title: const Text(
+          '意见反馈',
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+        ),
         actions: [
-          IconButton(onPressed: _bootstrap, icon: const Icon(Icons.refresh)),
+          IconButton(
+            onPressed: _onHelpTap,
+            icon: const Icon(Icons.help_outline),
+          ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      body: FeedMatterSubmitFabOverlay(
+        visible: showFab,
         onPressed: _loadingConfig ? null : _openSubmitPage,
-        icon: const Icon(Icons.edit_outlined),
-        label: const Text('提交反馈'),
+        child: body,
       ),
-      body: body,
     );
   }
 
   Widget _buildBody() {
-    return Column(
-      children: [
-        if (widget.options.showProjectConfigDebugPanel)
-          _ProjectConfigPanel(loading: _loadingConfig, config: _config),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-          child: TextField(
-            controller: _keywordController,
-            textInputAction: TextInputAction.search,
-            onSubmitted: (_) => _loadFeedbacks(),
-            decoration: InputDecoration(
-              hintText: '搜索反馈内容',
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: _keywordController.text.isEmpty
-                  ? null
-                  : IconButton(
-                      onPressed: () {
-                        _keywordController.clear();
-                        _loadFeedbacks();
-                      },
-                      icon: const Icon(Icons.clear),
-                    ),
-              border: const OutlineInputBorder(),
-            ),
-            onChanged: (_) => setState(() {}),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-          child: SegmentedButton<bool>(
-            segments: const [
-              ButtonSegment(value: false, label: Text('全部反馈')),
-              ButtonSegment(value: true, label: Text('我的反馈')),
-            ],
-            selected: {_onlyMine},
-            onSelectionChanged: (value) {
-              setState(() => _onlyMine = value.first);
+    final theme = FeedMatterUiTheme.of(context);
+    final reserveFabSpace =
+        widget.showFloatingSubmit || widget.embedded;
+
+    return ColoredBox(
+      color: theme.pageBackground,
+      child: Column(
+        children: [
+          if (widget.options.showProjectConfigDebugPanel)
+            _ProjectConfigPanel(loading: _loadingConfig, config: _config),
+          FeedMatterPillTabBar(
+            selectedIndex: _onlyMine ? 1 : 0,
+            onChanged: (index) {
+              setState(() => _onlyMine = index == 1);
               _loadFeedbacks();
             },
           ),
-        ),
-        Expanded(
-          child: RefreshIndicator(
-            onRefresh: _loadFeedbacks,
-            child: _buildList(),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: FeedMatterSearchBar(
+              controller: _keywordController,
+              onSubmitted: (_) => _loadFeedbacks(),
+              onChanged: (_) => setState(() {}),
+              onClear: () {
+                _keywordController.clear();
+                setState(() {});
+                _loadFeedbacks();
+              },
+            ),
           ),
-        ),
-      ],
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _loadFeedbacks,
+              child: _buildList(reserveFabSpace: reserveFabSpace),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildList() {
+  Widget _buildList({required bool reserveFabSpace}) {
+    final bottomPadding = reserveFabSpace
+        ? FeedMatterSubmitFabOverlay.fabClearance
+        : 16.0;
+
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(height: 120 + bottomPadding),
+          const Center(child: CircularProgressIndicator()),
+        ],
+      );
     }
     if (_feedbacks.isEmpty) {
       return ListView(
-        children: const [
-          SizedBox(height: 120),
-          Icon(Icons.inbox_outlined, size: 48),
-          SizedBox(height: 12),
-          Center(child: Text('暂无反馈')),
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          const SizedBox(height: 120),
+          const Icon(Icons.inbox_outlined, size: 48),
+          const SizedBox(height: 12),
+          const Center(child: Text('暂无反馈')),
+          SizedBox(height: bottomPadding),
         ],
       );
     }
     return ListView.builder(
-      padding: const EdgeInsets.only(bottom: 96),
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: EdgeInsets.only(top: 4, bottom: bottomPadding),
       itemCount: _feedbacks.length,
       itemBuilder: (context, index) {
         final feedback = _feedbacks[index];
         return FeedMatterFeedbackCard(
           feedback: feedback,
+          options: widget.options,
           onTap: () => _openDetailPage(feedback),
           onLike: () => _toggleLike(feedback),
         );

@@ -14,10 +14,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'FeedMatter Demo',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        useMaterial3: true,
-      ),
+      theme: buildFeedMatterTheme(),
       home: const FeedMatterExampleApp(),
     );
   }
@@ -39,10 +36,10 @@ class _FeedMatterExampleAppState extends State<FeedMatterExampleApp> {
       // 仅用于快速运行 example。接入正式项目时请替换为你的项目配置。
       const feedmatter.FeedMatterConfig(
         baseUrl: 'https://fmapi.litangkj.com',
-        apiKey: '501fd22890ee44de9e4f3ca1007315b6',
+        apiKey: '365a6702f1dd40078aaf2dbbd00d8bef',
         timeout: 30,
-        debug: true,
-        apiSecret: '57a24150121247d5beb95f2ddb0218ac',
+        debug: false,
+        apiSecret: '49e8ac2d47364fc1a2d3253d2cfe058a',
         appMarket: 'example',
       ),
       feedmatter.FeedMatterUser(
@@ -71,6 +68,21 @@ class _FeedMatterExampleAppState extends State<FeedMatterExampleApp> {
         customInfo: const {
           'source': 'feedmatter_flutter_sdk_example',
           'ui': 'feedmatter_flutter_ui',
+        },
+        onHelpTap: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('帮助页面示例：请接入你的帮助文档')),
+          );
+        },
+        onContentUrlTap: (url) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('链接点击：$url')),
+          );
+        },
+        onFaqUrlTap: (url) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('FAQ 链接：$url')),
+          );
         },
       ),
     );

@@ -1,4 +1,5 @@
 import 'package:feedmatter_flutter_sdk/feedmatter_flutter_sdk.dart';
+import 'package:flutter/foundation.dart';
 
 import 'faq/faq_cache.dart';
 
@@ -11,6 +12,8 @@ class FeedMatterUiOptions {
     this.showProjectConfigDebugPanel = false,
     this.platformFilter,
     this.onFaqUrlTap,
+    this.onHelpTap,
+    this.onContentUrlTap,
   });
 
   final Map<String, dynamic> customInfo;
@@ -22,4 +25,10 @@ class FeedMatterUiOptions {
   final bool showProjectConfigDebugPanel;
   final String? platformFilter;
   final void Function(String url)? onFaqUrlTap;
+
+  /// 列表页右上角帮助图标点击回调。
+  final VoidCallback? onHelpTap;
+
+  /// 正文/评论内链接点击回调（不强依赖 url_launcher）。
+  final void Function(String url)? onContentUrlTap;
 }

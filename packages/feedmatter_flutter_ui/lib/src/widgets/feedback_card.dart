@@ -2,123 +2,125 @@ import 'package:feedmatter_flutter_sdk/feedmatter_flutter_sdk.dart' as fm;
 import 'package:flutter/material.dart';
 
 import '../feedmatter_ui_helpers.dart';
+import '../feedmatter_ui_options.dart';
+import '../theme/feedmatter_ui_theme.dart';
+import 'attachment_list.dart';
+import 'feedmatter_link_text.dart';
+import 'feedmatter_tag.dart';
+import 'feedmatter_user_header.dart';
 
 class FeedMatterFeedbackCard extends StatelessWidget {
   final fm.Feedback feedback;
   final VoidCallback? onTap;
   final VoidCallback? onLike;
+  final FeedMatterUiOptions options;
 
   const FeedMatterFeedbackCard({
     super.key,
     required this.feedback,
     this.onTap,
     this.onLike,
+    this.options = const FeedMatterUiOptions(),
   });
 
   @override
   Widget build(BuildContext context) {
-    final statusColor = feedbackStatusColor(feedback.status);
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  _Badge(
-                    label: feedbackTypeLabel(feedback.type),
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  const SizedBox(width: 8),
-                  _Badge(
-                    label: feedbackStatusLabel(feedback.status),
-                    color: statusColor,
-                  ),
-                  const Spacer(),
-                  Text(
-                    formatRelativeTime(feedback.createdAt),
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                feedback.content,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  CircleAvatar(
-                    radius: 12,
-                    backgroundImage: feedback.author.avatar == null
-                        ? null
-                        : NetworkImage(feedback.author.avatar!),
-                    child: feedback.author.avatar == null
-                        ? const Icon(Icons.person, size: 14)
-                        : null,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      authorName(feedback.author),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ),
-                  IconButton(
-                    visualDensity: VisualDensity.compact,
-                    onPressed: onLike,
-                    icon: Icon(
-                      feedback.isLiked
-                          ? Icons.favorite
-                          : Icons.favorite_border_outlined,
-                      color: feedback.isLiked ? Colors.red : null,
-                    ),
-                  ),
-                  Text('${feedback.likeCount}'),
-                  const SizedBox(width: 12),
-                  const Icon(Icons.mode_comment_outlined, size: 18),
-                  const SizedBox(width: 4),
-                  Text('${feedback.commentCount}'),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
+    final theme = FeedMatterUiTheme.of(context);
+    final tags = feedbackTags(feedback);
+    final hasImageAttachment = feedback.attachments?.any(
+          (a) => a.fileType == fm.FileType.IMG && a.fileUrl != null,
+        ) ??
+        false;
 
-class _Badge extends StatelessWidget {
-  final String label;
-  final Color color;
-
-  const _Badge({required this.label, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withAlpha(31),
-        borderRadius: BorderRadius.circular(999),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(theme.cardRadius),
       ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
+      clipBehavior: Clip.antiAlias,
+      child: Material(
+        color: Colors.white,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                FeedMatterUserHeader(
+                  author: feedback.author,
+                  createdAt: feedback.createdAt,
+                ),
+                const SizedBox(height: 12),
+                FeedMatterLinkText(
+                  text: feedback.content,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  onUrlTap: options.onContentUrlTap,
+                ),
+                if (hasImageAttachment) ...[
+                  const SizedBox(height: 10),
+                  FeedMatterAttachmentList(
+                    attachments: feedback.attachments!,
+                    showTitle: false,
+                    compact: true,
+                  ),
+                ],
+                if (tags.isNotEmpty || onLike != null) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(child: FeedMatterTagRow(tags: tags)),
+                      if (onLike != null) ...[
+                        InkWell(
+                          onTap: onLike,
+                          borderRadius: BorderRadius.circular(4),
+                          child: Padding(
+                            padding: const EdgeInsets.all(4),
+                            child: Icon(
+                              feedback.isLiked
+                                  ? Icons.favorite
+                                  : Icons.favorite_border_outlined,
+                              size: 18,
+                              color: feedback.isLiked
+                                  ? Colors.red
+                                  : theme.textSecondary,
+                            ),
+                          ),
+                        ),
+                        if (feedback.likeCount > 0) ...[
+                          const SizedBox(width: 2),
+                          Text(
+                            '${feedback.likeCount}',
+                            style: TextStyle(
+                              color: theme.textSecondary,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(width: 12),
+                        Icon(
+                          Icons.mode_comment_outlined,
+                          size: 18,
+                          color: theme.textSecondary,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${feedback.commentCount}',
+                          style: TextStyle(
+                            color: theme.textSecondary,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
         ),
       ),
     );

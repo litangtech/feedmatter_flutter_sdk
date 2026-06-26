@@ -21,10 +21,7 @@ class FeedMatterCommentFloorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final replies = [
-      ...comment.replies.content,
-      ...extraReplies,
-    ];
+    final replies = [...comment.replies.content, ...extraReplies];
     final loadedReplyCount = replies.length;
     final hasMoreReplies = loadedReplyCount < comment.replies.totalElements;
 
@@ -63,10 +60,7 @@ class FeedMatterCommentFloorCard extends StatelessWidget {
                   child: Column(
                     children: [
                       for (final reply in replies)
-                        _ReplyItem(
-                          reply: reply,
-                          onReply: onReply,
-                        ),
+                        _ReplyItem(reply: reply, onReply: onReply),
                       if (hasMoreReplies)
                         SizedBox(
                           width: double.infinity,
@@ -108,10 +102,12 @@ class _CommentHeader extends StatelessWidget {
       children: [
         CircleAvatar(
           radius: 14,
-          backgroundImage:
-              author.avatar == null ? null : NetworkImage(author.avatar!),
-          child:
-              author.avatar == null ? const Icon(Icons.person, size: 16) : null,
+          backgroundImage: author.avatar == null
+              ? null
+              : NetworkImage(author.avatar!),
+          child: author.avatar == null
+              ? const Icon(Icons.person, size: 16)
+              : null,
         ),
         const SizedBox(width: 8),
         Expanded(
@@ -148,10 +144,7 @@ class _ReplyItem extends StatelessWidget {
   final fm.Comment reply;
   final VoidCallback? onReply;
 
-  const _ReplyItem({
-    required this.reply,
-    this.onReply,
-  });
+  const _ReplyItem({required this.reply, this.onReply});
 
   @override
   Widget build(BuildContext context) {
@@ -193,10 +186,7 @@ class _ReplyItem extends StatelessWidget {
           Text(reply.content),
           Align(
             alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: onReply,
-              child: const Text('回复'),
-            ),
+            child: TextButton(onPressed: onReply, child: const Text('回复')),
           ),
         ],
       ),

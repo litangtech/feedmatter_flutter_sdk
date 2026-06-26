@@ -1,13 +1,21 @@
 import 'package:feedmatter_flutter_sdk/feedmatter_flutter_sdk.dart' as fm;
 import 'package:flutter/material.dart';
 
+import '../feedmatter_ui_helpers.dart';
+import '../feedmatter_ui_options.dart';
 import 'feedback_detail_page.dart';
 import 'feedback_submit_page.dart';
-import 'feedmatter_ui_helpers.dart';
-import 'widgets/feedback_card.dart';
+import '../widgets/feedback_card.dart';
 
 class FeedMatterHomePage extends StatefulWidget {
-  const FeedMatterHomePage({super.key});
+  final FeedMatterUiOptions options;
+  final bool embedded;
+
+  const FeedMatterHomePage({
+    super.key,
+    this.options = const FeedMatterUiOptions(),
+    this.embedded = false,
+  });
 
   @override
   State<FeedMatterHomePage> createState() => _FeedMatterHomePageState();
@@ -34,10 +42,7 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage> {
   }
 
   Future<void> _bootstrap() async {
-    await Future.wait([
-      _loadConfig(),
-      _loadFeedbacks(),
-    ]);
+    await Future.wait([_loadConfig(), _loadFeedbacks()]);
   }
 
   Future<void> _loadConfig() async {
@@ -92,7 +97,8 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage> {
     }
     final created = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (_) => FeedMatterSubmitPage(config: _config),
+        builder: (_) =>
+            FeedMatterSubmitPage(config: _config, options: widget.options),
       ),
     );
     if (created == true) {
@@ -106,6 +112,7 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage> {
         builder: (_) => FeedMatterDetailPage(
           feedbackId: feedback.id,
           config: _config,
+          options: widget.options,
         ),
       ),
     );
@@ -116,8 +123,9 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage> {
 
   Future<void> _toggleLike(fm.Feedback feedback) async {
     try {
-      final updated =
-          await fm.FeedMatterClient.instance.toggleLike(feedback.id);
+      final updated = await fm.FeedMatterClient.instance.toggleLike(
+        feedback.id,
+      );
       if (!mounted) return;
       setState(() {
         _feedbacks = _feedbacks
@@ -133,14 +141,15 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final body = _buildBody();
+    if (widget.embedded) {
+      return body;
+    }
     return Scaffold(
       appBar: AppBar(
         title: const Text('用户反馈'),
         actions: [
-          IconButton(
-            onPressed: _bootstrap,
-            icon: const Icon(Icons.refresh),
-          ),
+          IconButton(onPressed: _bootstrap, icon: const Icon(Icons.refresh)),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -148,57 +157,59 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage> {
         icon: const Icon(Icons.edit_outlined),
         label: const Text('提交反馈'),
       ),
-      body: Column(
-        children: [
-          _ProjectConfigPanel(
-            loading: _loadingConfig,
-            config: _config,
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: TextField(
-              controller: _keywordController,
-              textInputAction: TextInputAction.search,
-              onSubmitted: (_) => _loadFeedbacks(),
-              decoration: InputDecoration(
-                hintText: '搜索反馈内容',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _keywordController.text.isEmpty
-                    ? null
-                    : IconButton(
-                        onPressed: () {
-                          _keywordController.clear();
-                          _loadFeedbacks();
-                        },
-                        icon: const Icon(Icons.clear),
-                      ),
-                border: const OutlineInputBorder(),
-              ),
-              onChanged: (_) => setState(() {}),
+      body: body,
+    );
+  }
+
+  Widget _buildBody() {
+    return Column(
+      children: [
+        if (widget.options.showProjectConfigDebugPanel)
+          _ProjectConfigPanel(loading: _loadingConfig, config: _config),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: TextField(
+            controller: _keywordController,
+            textInputAction: TextInputAction.search,
+            onSubmitted: (_) => _loadFeedbacks(),
+            decoration: InputDecoration(
+              hintText: '搜索反馈内容',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: _keywordController.text.isEmpty
+                  ? null
+                  : IconButton(
+                      onPressed: () {
+                        _keywordController.clear();
+                        _loadFeedbacks();
+                      },
+                      icon: const Icon(Icons.clear),
+                    ),
+              border: const OutlineInputBorder(),
             ),
+            onChanged: (_) => setState(() {}),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-            child: SegmentedButton<bool>(
-              segments: const [
-                ButtonSegment(value: false, label: Text('全部反馈')),
-                ButtonSegment(value: true, label: Text('我的反馈')),
-              ],
-              selected: {_onlyMine},
-              onSelectionChanged: (value) {
-                setState(() => _onlyMine = value.first);
-                _loadFeedbacks();
-              },
-            ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          child: SegmentedButton<bool>(
+            segments: const [
+              ButtonSegment(value: false, label: Text('全部反馈')),
+              ButtonSegment(value: true, label: Text('我的反馈')),
+            ],
+            selected: {_onlyMine},
+            onSelectionChanged: (value) {
+              setState(() => _onlyMine = value.first);
+              _loadFeedbacks();
+            },
           ),
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: _loadFeedbacks,
-              child: _buildList(),
-            ),
+        ),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: _loadFeedbacks,
+            child: _buildList(),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -235,10 +246,7 @@ class _ProjectConfigPanel extends StatelessWidget {
   final bool loading;
   final fm.ProjectConfig config;
 
-  const _ProjectConfigPanel({
-    required this.loading,
-    required this.config,
-  });
+  const _ProjectConfigPanel({required this.loading, required this.config});
 
   @override
   Widget build(BuildContext context) {
@@ -257,30 +265,16 @@ class _ProjectConfigPanel extends StatelessWidget {
         spacing: 8,
         runSpacing: 8,
         children: [
-          _SwitchBadge(
-            label: '反馈',
-            enabled: config.feedbackEnabled,
-          ),
-          _SwitchBadge(
-            label: '评论',
-            enabled: config.commentEnabled,
-          ),
+          _SwitchBadge(label: '反馈', enabled: config.feedbackEnabled),
+          _SwitchBadge(label: '评论', enabled: config.commentEnabled),
           _SwitchBadge(
             label: '反馈附件',
             enabled: config.feedbackAttachmentEnabled,
           ),
-          _SwitchBadge(
-            label: '评论附件',
-            enabled: config.commentAttachmentEnabled,
-          ),
-          _SwitchBadge(
-            label: '游客反馈',
-            enabled: config.guestFeedbackEnabled,
-          ),
-          _SwitchBadge(
-            label: '游客评论',
-            enabled: config.guestCommentEnabled,
-          ),
+          _SwitchBadge(label: '评论附件', enabled: config.commentAttachmentEnabled),
+          _SwitchBadge(label: 'FAQ', enabled: config.faqEnabled),
+          _SwitchBadge(label: '游客反馈', enabled: config.guestFeedbackEnabled),
+          _SwitchBadge(label: '游客评论', enabled: config.guestCommentEnabled),
         ],
       ),
     );
@@ -291,10 +285,7 @@ class _SwitchBadge extends StatelessWidget {
   final String label;
   final bool enabled;
 
-  const _SwitchBadge({
-    required this.label,
-    required this.enabled,
-  });
+  const _SwitchBadge({required this.label, required this.enabled});
 
   @override
   Widget build(BuildContext context) {

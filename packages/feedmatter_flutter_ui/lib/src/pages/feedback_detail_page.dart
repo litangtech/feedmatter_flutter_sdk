@@ -1,17 +1,20 @@
 import 'package:feedmatter_flutter_sdk/feedmatter_flutter_sdk.dart' as fm;
 import 'package:flutter/material.dart';
 
-import 'feedmatter_ui_helpers.dart';
-import 'widgets/comment_floor_card.dart';
+import '../feedmatter_ui_helpers.dart';
+import '../feedmatter_ui_options.dart';
+import '../widgets/comment_floor_card.dart';
 
 class FeedMatterDetailPage extends StatefulWidget {
   final String feedbackId;
   final fm.ProjectConfig config;
+  final FeedMatterUiOptions options;
 
   const FeedMatterDetailPage({
     super.key,
     required this.feedbackId,
     required this.config,
+    this.options = const FeedMatterUiOptions(),
   });
 
   @override
@@ -147,10 +150,10 @@ class _FeedMatterDetailPageState extends State<FeedMatterDetailPage> {
     }
   }
 
-  void _setReplyTarget(String commentId, String authorName) {
+  void _setReplyTarget(String commentId, String authorDisplayName) {
     setState(() {
       _replyToCommentId = commentId;
-      _replyToName = authorName;
+      _replyToName = authorDisplayName;
     });
   }
 
@@ -168,43 +171,41 @@ class _FeedMatterDetailPageState extends State<FeedMatterDetailPage> {
       appBar: AppBar(
         title: const Text('反馈详情'),
         actions: [
-          IconButton(
-            onPressed: _loadDetail,
-            icon: const Icon(Icons.refresh),
-          ),
+          IconButton(onPressed: _loadDetail, icon: const Icon(Icons.refresh)),
         ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : feedback == null
-              ? const Center(child: Text('反馈不存在'))
-              : Column(
-                  children: [
-                    Expanded(
-                      child: RefreshIndicator(
-                        onRefresh: _loadDetail,
-                        child: ListView(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          children: [
-                            _FeedbackDetailCard(feedback: feedback),
-                            _CommentHeader(config: widget.config),
-                            ..._buildCommentCards(),
-                          ],
-                        ),
-                      ),
+          ? const Center(child: Text('反馈不存在'))
+          : Column(
+              children: [
+                Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: _loadDetail,
+                    child: ListView(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      children: [
+                        _FeedbackDetailCard(feedback: feedback),
+                        _CommentHeader(config: widget.config),
+                        ..._buildCommentCards(),
+                      ],
                     ),
-                    _CommentInputBar(
-                      controller: _commentController,
-                      enabled:
-                          widget.config.commentEnabled && feedback.allowComment,
-                      sending: _sending,
-                      replyToName: _replyToName,
-                      maxLength: widget.config.commentMaxContentLength,
-                      onCancelReply: _clearReplyTarget,
-                      onSend: _sendComment,
-                    ),
-                  ],
+                  ),
                 ),
+                _CommentInputBar(
+                  controller: _commentController,
+                  enabled:
+                      widget.config.commentEnabled && feedback.allowComment,
+                  sending: _sending,
+                  replyToName: _replyToName,
+                  maxLength: widget.config.commentMaxContentLength,
+                  hintText: widget.config.commentPrompt,
+                  onCancelReply: _clearReplyTarget,
+                  onSend: _sendComment,
+                ),
+              ],
+            ),
     );
   }
 
@@ -312,10 +313,7 @@ class _CommentHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
       child: Row(
         children: [
-          Text(
-            '评论',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
+          Text('评论', style: Theme.of(context).textTheme.titleMedium),
           const Spacer(),
           Text(
             config.commentEnabled ? '评论已开启' : '评论已关闭',
@@ -335,6 +333,7 @@ class _CommentInputBar extends StatelessWidget {
   final bool sending;
   final String? replyToName;
   final int maxLength;
+  final String? hintText;
   final VoidCallback onCancelReply;
   final VoidCallback onSend;
 
@@ -344,6 +343,7 @@ class _CommentInputBar extends StatelessWidget {
     required this.sending,
     required this.replyToName,
     required this.maxLength,
+    required this.hintText,
     required this.onCancelReply,
     required this.onSend,
   });
@@ -371,10 +371,7 @@ class _CommentInputBar extends StatelessWidget {
               Row(
                 children: [
                   Expanded(child: Text('正在回复 $replyToName')),
-                  TextButton(
-                    onPressed: onCancelReply,
-                    child: const Text('取消'),
-                  ),
+                  TextButton(onPressed: onCancelReply, child: const Text('取消')),
                 ],
               ),
             Row(
@@ -387,7 +384,7 @@ class _CommentInputBar extends StatelessWidget {
                     minLines: 1,
                     maxLines: 4,
                     decoration: InputDecoration(
-                      hintText: enabled ? '写下你的评论...' : '评论功能已关闭',
+                      hintText: enabled ? (hintText ?? '写下你的评论...') : '评论功能已关闭',
                       counterText: '',
                       border: const OutlineInputBorder(),
                     ),

@@ -77,3 +77,29 @@ void showFeedMatterSnackBar(
     ),
   );
 }
+
+List<fm.FaqItem> filterFaqItems(
+  List<fm.FaqItem> items, {
+  String? keyword,
+  String? platformFilter,
+}) {
+  return items.where((item) {
+    if (platformFilter != null &&
+        platformFilter.isNotEmpty &&
+        item.platforms != null &&
+        item.platforms!.isNotEmpty &&
+        !item.platforms!.contains(platformFilter)) {
+      return false;
+    }
+    if (keyword == null || keyword.trim().isEmpty) {
+      return true;
+    }
+    final query = keyword.trim().toLowerCase();
+    final title = item.title.toLowerCase();
+    final answer = (item.answer ?? '').toLowerCase();
+    final keywords = (item.keywords ?? '').toLowerCase();
+    return title.contains(query) ||
+        answer.contains(query) ||
+        keywords.contains(query);
+  }).toList();
+}

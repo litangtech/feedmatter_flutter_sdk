@@ -1,6 +1,7 @@
 import 'package:feedmatter_flutter_sdk/feedmatter_flutter_sdk.dart' as fm;
 import 'package:flutter/material.dart';
 
+import 'feedmatter_ui_options.dart';
 import 'widgets/feedmatter_tag.dart';
 
 String formatRelativeTime(DateTime time) {
@@ -86,6 +87,15 @@ String authorName(fm.Author author) {
     return username;
   }
   return '匿名用户';
+}
+
+/// 是否展示列表页顶部的项目配置调试开关。
+/// 需要 SDK [FeedMatterConfig.debug] 为 `true`，且 UI 选项未显式关闭。
+bool shouldShowProjectConfigDebugPanel(FeedMatterUiOptions options) {
+  if (fm.FeedMatterClient.instance.config?.debug != true) {
+    return false;
+  }
+  return options.showProjectConfigDebugPanel;
 }
 
 String? platformLabel(fm.ClientInfo? clientInfo) {

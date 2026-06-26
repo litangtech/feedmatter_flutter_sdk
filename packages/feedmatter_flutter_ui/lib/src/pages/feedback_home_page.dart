@@ -199,7 +199,7 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage> {
       color: theme.pageBackground,
       child: Column(
         children: [
-          if (widget.options.showProjectConfigDebugPanel)
+          if (shouldShowProjectConfigDebugPanel(widget.options))
             _ProjectConfigPanel(loading: _loadingConfig, config: _config),
           FeedMatterPillTabBar(
             selectedIndex: _onlyMine ? 1 : 0,

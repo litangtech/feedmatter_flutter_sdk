@@ -36,10 +36,10 @@ class _FeedMatterExampleAppState extends State<FeedMatterExampleApp> {
       // 仅用于快速运行 example。接入正式项目时请替换为你的项目配置。
       const feedmatter.FeedMatterConfig(
         baseUrl: 'https://fmapi.litangkj.com',
-        apiKey: '365a6702f1dd40078aaf2dbbd00d8bef',
+        apiKey: '276947d1c9bd45eda07653b69cee88c0',
         timeout: 30,
-        debug: false,
-        apiSecret: '49e8ac2d47364fc1a2d3253d2cfe058a',
+        debug: false, // false 时隐藏列表页顶部的配置调试开关
+        apiSecret: '5c7ce8c000ac4e9096241524096dd511',
         appMarket: 'example',
       ),
       feedmatter.FeedMatterUser(
@@ -64,7 +64,6 @@ class _FeedMatterExampleAppState extends State<FeedMatterExampleApp> {
   Widget build(BuildContext context) {
     return FeedMatterFeedbackEntry(
       options: FeedMatterUiOptions(
-        showProjectConfigDebugPanel: true,
         customInfo: const {
           'source': 'feedmatter_flutter_sdk_example',
           'ui': 'feedmatter_flutter_ui',

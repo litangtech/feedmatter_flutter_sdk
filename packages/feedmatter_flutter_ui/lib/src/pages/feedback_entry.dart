@@ -102,7 +102,7 @@ class _FeedMatterFeedbackEntryState extends State<FeedMatterFeedbackEntry>
       return FeedMatterHomePage(options: widget.options);
     }
 
-    final showFeedbackFab = _tabController.index == 1;
+    final showFeedbackFab = _tabController.index == 0;
 
     return Scaffold(
       backgroundColor: theme.pageBackground,
@@ -128,8 +128,8 @@ class _FeedMatterFeedbackEntryState extends State<FeedMatterFeedbackEntry>
           indicatorColor: theme.primaryBlue,
           indicatorSize: TabBarIndicatorSize.label,
           tabs: const [
-            Tab(text: '常见问题'),
             Tab(text: '反馈列表'),
+            Tab(text: '常见问题'),
           ],
         ),
       ),
@@ -139,17 +139,17 @@ class _FeedMatterFeedbackEntryState extends State<FeedMatterFeedbackEntry>
         child: TabBarView(
           controller: _tabController,
           children: [
-            FeedMatterFaqPage(
-              config: _config,
-              options: widget.options,
-              embedded: true,
-              onSubmitFeedback: _openSubmitPage,
-            ),
             FeedMatterHomePage(
               key: ValueKey(_homeRefreshKey),
               options: widget.options,
               embedded: true,
               showFloatingSubmit: false,
+            ),
+            FeedMatterFaqPage(
+              config: _config,
+              options: widget.options,
+              embedded: true,
+              onSubmitFeedback: _openSubmitPage,
             ),
           ],
         ),

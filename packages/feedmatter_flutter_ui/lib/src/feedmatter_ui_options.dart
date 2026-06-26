@@ -9,7 +9,7 @@ class FeedMatterUiOptions {
     this.onPickAttachments,
     this.useDefaultAttachmentPicker = true,
     this.faqCache,
-    this.showProjectConfigDebugPanel = false,
+    this.showProjectConfigDebugPanel = true,
     this.platformFilter,
     this.onFaqUrlTap,
     this.onHelpTap,
@@ -22,6 +22,8 @@ class FeedMatterUiOptions {
   /// 未提供 [onPickAttachments] 时，是否使用内置文件选择与上传逻辑。
   final bool useDefaultAttachmentPicker;
   final FeedMatterFaqCache? faqCache;
+  /// 是否在列表页展示项目配置调试面板。
+  /// 仅在 [FeedMatterConfig.debug] 为 `true` 时生效。
   final bool showProjectConfigDebugPanel;
   final String? platformFilter;
   final void Function(String url)? onFaqUrlTap;

@@ -533,8 +533,11 @@ class FeedMatterClient {
   }
 
   /// 上传公开文件
-  Future<String> uploadPublicFile(File file) async {
-    _validateFile(file);
+  Future<String> uploadPublicFile(
+    File file, {
+    int? maxSize,
+  }) async {
+    _validateFile(file, maxSize: maxSize ?? 40 * 1024 * 1024);
     final compressFile = await _compressFile(file);
 
     try {
@@ -567,8 +570,11 @@ class FeedMatterClient {
   }
 
   /// 上传私密文件
-  Future<String> uploadPrivateFile(File file) async {
-    _validateFile(file);
+  Future<String> uploadPrivateFile(
+    File file, {
+    int? maxSize,
+  }) async {
+    _validateFile(file, maxSize: maxSize ?? 40 * 1024 * 1024);
     final compressFile = await _compressFile(file);
 
     try {

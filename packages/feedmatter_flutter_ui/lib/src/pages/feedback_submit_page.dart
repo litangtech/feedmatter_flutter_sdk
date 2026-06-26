@@ -1,6 +1,7 @@
 import 'package:feedmatter_flutter_sdk/feedmatter_flutter_sdk.dart' as fm;
 import 'package:flutter/material.dart';
 
+import '../attachment/default_attachment_picker.dart';
 import '../feedmatter_ui_helpers.dart';
 import '../feedmatter_ui_options.dart';
 
@@ -32,14 +33,33 @@ class _FeedMatterSubmitPageState extends State<FeedMatterSubmitPage> {
   }
 
   Future<void> _pickAttachments() async {
-    final onPick = widget.options.onPickAttachments;
-    if (onPick == null) return;
+    final customPick = widget.options.onPickAttachments;
+    final useDefaultPicker = widget.options.useDefaultAttachmentPicker;
+    if (customPick == null && !useDefaultPicker) return;
+
+    final maxCount = widget.config.maxAttachments;
+    if (_attachments.length >= maxCount) {
+      showFeedMatterSnackBar(context, '最多只能添加 $maxCount 个附件', isError: true);
+      return;
+    }
 
     setState(() => _pickingAttachments = true);
     try {
-      final picked = await onPick();
+      final List<fm.Attachment> picked;
+      if (customPick != null) {
+        picked = await customPick();
+      } else {
+        final result = await pickAndUploadAttachments(
+          config: widget.config,
+          remainingSlots: maxCount - _attachments.length,
+        );
+        if (result.warning != null && mounted) {
+          showFeedMatterSnackBar(context, result.warning!, isError: true);
+        }
+        picked = result.attachments;
+      }
+
       if (!mounted) return;
-      final maxCount = widget.config.maxAttachments;
       final merged = [..._attachments, ...picked];
       if (merged.length > maxCount) {
         showFeedMatterSnackBar(context, '最多只能添加 $maxCount 个附件', isError: true);
@@ -147,9 +167,12 @@ class _FeedMatterSubmitPageState extends State<FeedMatterSubmitPage> {
           ),
           if (config.feedbackAttachmentEnabled) ...[
             const SizedBox(height: 12),
-            if (widget.options.onPickAttachments != null)
+            if (widget.options.onPickAttachments != null ||
+                widget.options.useDefaultAttachmentPicker)
               OutlinedButton.icon(
-                onPressed: _pickingAttachments || _submitting
+                onPressed: _pickingAttachments ||
+                        _submitting ||
+                        _attachments.length >= config.maxAttachments
                     ? null
                     : _pickAttachments,
                 icon: _pickingAttachments

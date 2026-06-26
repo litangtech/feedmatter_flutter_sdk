@@ -50,14 +50,17 @@ class FeedMatterThemeScope extends StatelessWidget {
     );
     return ColoredBox(
       color: tokens.pageBackground,
-      child: Theme(data: themeData, child: child),
+      child: SizedBox.expand(
+        child: Theme(data: themeData, child: child),
+      ),
     );
   }
 
-  /// Pushes [child] wrapped in a FeedMatter theme scope.
+  /// Pushes a host-level route into the feedback module with FeedMatter theme.
   ///
-  /// Required because routes pushed onto the root [Navigator] sit outside
-  /// an ancestor [FeedMatterThemeScope] and would otherwise lose theme tokens.
+  /// Use this only when opening [FeedMatterFeedbackEntry] (or similar) from the
+  /// host app. Internal navigation inside the feedback module should use the
+  /// nested [Navigator] within [FeedMatterFeedbackEntry] instead.
   static Future<T?> push<T extends Object?>(
     BuildContext context, {
     required FeedMatterThemeOptions theme,

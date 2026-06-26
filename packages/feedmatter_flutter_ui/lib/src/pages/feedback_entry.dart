@@ -25,9 +25,11 @@ class FeedMatterFeedbackEntry extends StatefulWidget {
 }
 
 class _FeedMatterFeedbackEntryState extends State<FeedMatterFeedbackEntry> {
+  final _innerNavigatorKey = GlobalKey<NavigatorState>();
+  final _homeKey = GlobalKey<FeedMatterHomePageState>();
+
   fm.ProjectConfig _config = fm.ProjectConfig.defaultConfig();
   bool _loadingConfig = true;
-  int _homeRefreshKey = 0;
 
   @override
   void initState() {
@@ -58,24 +60,33 @@ class _FeedMatterFeedbackEntryState extends State<FeedMatterFeedbackEntry> {
       showFeedMatterSnackBar(context, '当前项目已关闭反馈发布', isError: true);
       return;
     }
-    final created = await FeedMatterThemeScope.push<bool>(
-      context,
-      theme: widget.options.theme,
-      child: FeedMatterSubmitPage(config: _config, options: widget.options),
+    final navigator = _innerNavigatorKey.currentState;
+    if (navigator == null) return;
+
+    final created = await navigator.push<bool>(
+      MaterialPageRoute(
+        builder: (_) => FeedMatterSubmitPage(
+          config: _config,
+          options: widget.options,
+        ),
+      ),
     );
     if (created == true && mounted) {
-      setState(() => _homeRefreshKey++);
+      await _homeKey.currentState?.reload();
     }
   }
 
   Future<void> _openFaqPage() async {
-    await FeedMatterThemeScope.push<void>(
-      context,
-      theme: widget.options.theme,
-      child: FeedMatterFaqPage(
-        config: _config,
-        options: widget.options,
-        onSubmitFeedback: _openSubmitPage,
+    final navigator = _innerNavigatorKey.currentState;
+    if (navigator == null) return;
+
+    await navigator.push<void>(
+      MaterialPageRoute(
+        builder: (_) => FeedMatterFaqPage(
+          config: _config,
+          options: widget.options,
+          onSubmitFeedback: _openSubmitPage,
+        ),
       ),
     );
   }
@@ -92,28 +103,58 @@ class _FeedMatterFeedbackEntryState extends State<FeedMatterFeedbackEntry> {
     );
   }
 
+  void _handlePopInvoked(bool didPop) {
+    if (didPop) return;
+    final innerNav = _innerNavigatorKey.currentState;
+    if (innerNav != null && innerNav.canPop()) {
+      innerNav.pop();
+      return;
+    }
+    Navigator.of(context).pop();
+  }
+
   @override
   Widget build(BuildContext context) {
     return FeedMatterThemeScope(
       options: widget.options.theme,
       child: Builder(
-        builder: (context) => _buildContent(context),
+        builder: (scopedContext) {
+          if (_loadingConfig) {
+            final theme = FeedMatterUiTheme.of(scopedContext);
+            return Scaffold(
+              backgroundColor: theme.pageBackground,
+              body: const Center(child: CircularProgressIndicator()),
+            );
+          }
+
+          return PopScope(
+            canPop: false,
+            onPopInvokedWithResult: (didPop, result) {
+              _handlePopInvoked(didPop);
+            },
+            child: Navigator(
+              key: _innerNavigatorKey,
+              onGenerateRoute: (settings) {
+                return MaterialPageRoute<void>(
+                  settings: settings,
+                  builder: (context) => _buildHomeShell(context),
+                );
+              },
+            ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildContent(BuildContext context) {
+  Widget _buildHomeShell(BuildContext context) {
     final theme = FeedMatterUiTheme.of(context);
 
-    if (_loadingConfig) {
-      return Scaffold(
-        backgroundColor: theme.pageBackground,
-        body: const Center(child: CircularProgressIndicator()),
-      );
-    }
-
     if (!_config.faqEnabled) {
-      return FeedMatterHomePage(options: widget.options);
+      return FeedMatterHomePage(
+        key: _homeKey,
+        options: widget.options,
+      );
     }
 
     return Scaffold(
@@ -142,10 +183,10 @@ class _FeedMatterFeedbackEntryState extends State<FeedMatterFeedbackEntry> {
           icon: Icons.quiz_outlined,
         ),
         rightAction: FeedMatterSubmitFab(
-          onPressed: _loadingConfig ? null : _openSubmitPage,
+          onPressed: _openSubmitPage,
         ),
         child: FeedMatterHomePage(
-          key: ValueKey(_homeRefreshKey),
+          key: _homeKey,
           options: widget.options,
           embedded: true,
           showFloatingSubmit: false,

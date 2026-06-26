@@ -1073,7 +1073,29 @@ packages/feedmatter_flutter_ui/lib/
 
 ### 主题定制
 
-FeedMatter UI 支持浅色、深色、跟随系统三种模式，并可通过 `seedColor` 与宿主 App 主色保持一致。`FeedMatterFeedbackEntry` 会自动包裹主题，无需修改宿主 `MaterialApp`。
+FeedMatter UI 支持浅色、深色、跟随系统三种模式，并可通过 `seedColor` 与宿主 App 主色保持一致。推荐使用 [`FeedMatterFeedbackEntry`](packages/feedmatter_flutter_ui/lib/src/pages/feedback_entry.dart)：内部自带嵌套 `Navigator` 与主题隔离，模块内切页不会受宿主 `MaterialApp` 浅色主题影响。
+
+**宿主 App 打开反馈模块**（仅需在根 Navigator push 一次）：
+
+```dart
+FeedMatterThemeScope.push<void>(
+  context,
+  theme: FeedMatterThemeOptions(
+    mode: _themeMode,
+    seedColor: _seedColor,
+  ),
+  child: FeedMatterFeedbackEntry(
+    options: FeedMatterUiOptions(
+      theme: FeedMatterThemeOptions(
+        mode: FeedMatterThemeMode.system,
+        seedColor: Color(0xFF6750A4),
+      ),
+    ),
+  ),
+);
+```
+
+`FeedMatterThemeScope.push` **仅用于宿主入口**；反馈模块内部的提交、详情、FAQ 等页面由 `FeedMatterFeedbackEntry` 的嵌套 Navigator 管理，无需再次调用。
 
 ```dart
 FeedMatterFeedbackEntry(
@@ -1091,7 +1113,7 @@ FeedMatterFeedbackEntry(
 | `mode` | 主题模式：`light` 浅色、`dark` 深色、`system` 跟随系统，默认 `system` |
 | `seedColor` | 主题色种子，用于生成 ColorScheme；为 `null` 时继承宿主 `Theme.of(context).colorScheme.primary` |
 
-若单独使用 `FeedMatterHomePage` 等页面（不经过 `FeedMatterFeedbackEntry`），请自行用 `FeedMatterThemeScope` 包裹，或在宿主 `MaterialApp` 上使用 `buildFeedMatterLightTheme()` / `buildFeedMatterDarkTheme()`。
+若单独使用 `FeedMatterHomePage` 等页面（不经过 `FeedMatterFeedbackEntry`），请自行用 `FeedMatterThemeScope` 包裹；此时内部 `Navigator.push` 仍会走宿主根 Navigator，切页时可能出现主题闪烁，建议优先使用 `FeedMatterFeedbackEntry`。
 
 接入建议：
 

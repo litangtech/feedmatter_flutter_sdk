@@ -231,5 +231,50 @@ void main() {
 
       expect(backgroundColor, const Color(0xFF121212));
     });
+
+    testWidgets('nested navigator keeps FeedMatter theme on pushed page', (
+      tester,
+    ) async {
+      Color? pushedBackground;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData.light(),
+          home: FeedMatterThemeScope(
+            options: const FeedMatterThemeOptions(
+              mode: FeedMatterThemeMode.dark,
+            ),
+            child: Navigator(
+              onGenerateRoute: (settings) {
+                return MaterialPageRoute<void>(
+                  builder: (context) {
+                    return ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).push<void>(
+                          MaterialPageRoute(
+                            builder: (routeContext) {
+                              pushedBackground = FeedMatterUiTheme.of(
+                                routeContext,
+                              ).pageBackground;
+                              return const Scaffold(body: SizedBox());
+                            },
+                          ),
+                        );
+                      },
+                      child: const Text('push'),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('push'));
+      await tester.pumpAndSettle();
+
+      expect(pushedBackground, const Color(0xFF121212));
+    });
   });
 }

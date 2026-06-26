@@ -27,28 +27,45 @@ class FeedMatterHomePage extends StatefulWidget {
   State<FeedMatterHomePage> createState() => _FeedMatterHomePageState();
 }
 
-class _FeedMatterHomePageState extends State<FeedMatterHomePage> {
+class _FeedMatterHomePageState extends State<FeedMatterHomePage>
+    with SingleTickerProviderStateMixin {
   final _keywordController = TextEditingController();
+  late final TabController _tabController;
   fm.ProjectConfig _config = fm.ProjectConfig.defaultConfig();
-  List<fm.Feedback> _feedbacks = [];
-  bool _loading = true;
+  final List<fm.Feedback> _allFeedbacks = [];
+  final List<fm.Feedback> _myFeedbacks = [];
+  bool _allLoading = true;
+  bool _myLoading = true;
   bool _loadingConfig = true;
-  bool _onlyMine = false;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(_onTabChanged);
     _bootstrap();
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_onTabChanged);
+    _tabController.dispose();
     _keywordController.dispose();
     super.dispose();
   }
 
+  void _onTabChanged() {
+    if (_tabController.indexIsChanging) return;
+    setState(() {});
+    _loadFeedbacks(forMine: _tabController.index == 1);
+  }
+
   Future<void> _bootstrap() async {
-    await Future.wait([_loadConfig(), _loadFeedbacks()]);
+    await _loadConfig();
+    await Future.wait([
+      _loadFeedbacks(forMine: false),
+      _loadFeedbacks(forMine: true),
+    ]);
   }
 
   Future<void> _loadConfig() async {
@@ -69,11 +86,17 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage> {
     }
   }
 
-  Future<void> _loadFeedbacks() async {
-    setState(() => _loading = true);
+  Future<void> _loadFeedbacks({required bool forMine}) async {
+    setState(() {
+      if (forMine) {
+        _myLoading = true;
+      } else {
+        _allLoading = true;
+      }
+    });
     try {
       final keyword = _keywordController.text.trim();
-      final feedbacks = _onlyMine
+      final feedbacks = forMine
           ? await fm.FeedMatterClient.instance.getMyFeedbacks(
               size: 30,
               keyword: keyword.isEmpty ? null : keyword,
@@ -82,18 +105,42 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage> {
               size: 30,
               keyword: keyword.isEmpty ? null : keyword,
             );
-      if (mounted) {
-        setState(() => _feedbacks = feedbacks);
-      }
+      if (!mounted) return;
+      setState(() {
+        if (forMine) {
+          _myFeedbacks
+            ..clear()
+            ..addAll(feedbacks);
+          _myLoading = false;
+        } else {
+          _allFeedbacks
+            ..clear()
+            ..addAll(feedbacks);
+          _allLoading = false;
+        }
+      });
     } catch (e) {
       if (mounted) {
         showFeedMatterSnackBar(context, '反馈列表加载失败：$e', isError: true);
       }
     } finally {
       if (mounted) {
-        setState(() => _loading = false);
+        setState(() {
+          if (forMine) {
+            _myLoading = false;
+          } else {
+            _allLoading = false;
+          }
+        });
       }
     }
+  }
+
+  Future<void> _reloadAllTabs() async {
+    await Future.wait([
+      _loadFeedbacks(forMine: false),
+      _loadFeedbacks(forMine: true),
+    ]);
   }
 
   Future<void> _openSubmitPage() async {
@@ -108,7 +155,7 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage> {
       ),
     );
     if (created == true) {
-      await _loadFeedbacks();
+      await _reloadAllTabs();
     }
   }
 
@@ -123,7 +170,7 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage> {
       ),
     );
     if (changed == true) {
-      await _loadFeedbacks();
+      await _reloadAllTabs();
     }
   }
 
@@ -134,14 +181,20 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage> {
       );
       if (!mounted) return;
       setState(() {
-        _feedbacks = _feedbacks
-            .map((item) => item.id == updated.id ? updated : item)
-            .toList();
+        _replaceFeedback(_allFeedbacks, updated);
+        _replaceFeedback(_myFeedbacks, updated);
       });
     } catch (e) {
       if (mounted) {
         showFeedMatterSnackBar(context, '点赞失败：$e', isError: true);
       }
+    }
+  }
+
+  void _replaceFeedback(List<fm.Feedback> list, fm.Feedback updated) {
+    final index = list.indexWhere((item) => item.id == updated.id);
+    if (index >= 0) {
+      list[index] = updated;
     }
   }
 
@@ -192,8 +245,7 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage> {
 
   Widget _buildBody() {
     final theme = FeedMatterUiTheme.of(context);
-    final reserveFabSpace =
-        widget.showFloatingSubmit || widget.embedded;
+    final reserveFabSpace = widget.showFloatingSubmit || widget.embedded;
 
     return ColoredBox(
       color: theme.pageBackground,
@@ -202,29 +254,39 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage> {
           if (shouldShowProjectConfigDebugPanel(widget.options))
             _ProjectConfigPanel(loading: _loadingConfig, config: _config),
           FeedMatterPillTabBar(
-            selectedIndex: _onlyMine ? 1 : 0,
-            onChanged: (index) {
-              setState(() => _onlyMine = index == 1);
-              _loadFeedbacks();
-            },
+            selectedIndex: _tabController.index,
+            onChanged: (index) => _tabController.animateTo(index),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
             child: FeedMatterSearchBar(
               controller: _keywordController,
-              onSubmitted: (_) => _loadFeedbacks(),
+              onSubmitted: (_) => _reloadAllTabs(),
               onChanged: (_) => setState(() {}),
               onClear: () {
                 _keywordController.clear();
                 setState(() {});
-                _loadFeedbacks();
+                _reloadAllTabs();
               },
             ),
           ),
           Expanded(
-            child: RefreshIndicator(
-              onRefresh: _loadFeedbacks,
-              child: _buildList(reserveFabSpace: reserveFabSpace),
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildTabList(
+                  feedbacks: _allFeedbacks,
+                  loading: _allLoading,
+                  reserveFabSpace: reserveFabSpace,
+                  onRefresh: () => _loadFeedbacks(forMine: false),
+                ),
+                _buildTabList(
+                  feedbacks: _myFeedbacks,
+                  loading: _myLoading,
+                  reserveFabSpace: reserveFabSpace,
+                  onRefresh: () => _loadFeedbacks(forMine: true),
+                ),
+              ],
             ),
           ),
         ],
@@ -232,12 +294,17 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage> {
     );
   }
 
-  Widget _buildList({required bool reserveFabSpace}) {
+  Widget _buildTabList({
+    required List<fm.Feedback> feedbacks,
+    required bool loading,
+    required bool reserveFabSpace,
+    required Future<void> Function() onRefresh,
+  }) {
     final bottomPadding = reserveFabSpace
         ? FeedMatterBottomActionOverlay.actionClearance
         : 16.0;
 
-    if (_loading) {
+    if (loading) {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
@@ -246,31 +313,39 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage> {
         ],
       );
     }
-    if (_feedbacks.isEmpty) {
-      return ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        children: [
-          const SizedBox(height: 120),
-          const Icon(Icons.inbox_outlined, size: 48),
-          const SizedBox(height: 12),
-          const Center(child: Text('暂无反馈')),
-          SizedBox(height: bottomPadding),
-        ],
+
+    if (feedbacks.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: onRefresh,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            const SizedBox(height: 120),
+            const Icon(Icons.inbox_outlined, size: 48),
+            const SizedBox(height: 12),
+            const Center(child: Text('暂无反馈')),
+            SizedBox(height: bottomPadding),
+          ],
+        ),
       );
     }
-    return ListView.builder(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: EdgeInsets.only(top: 4, bottom: bottomPadding),
-      itemCount: _feedbacks.length,
-      itemBuilder: (context, index) {
-        final feedback = _feedbacks[index];
-        return FeedMatterFeedbackCard(
-          feedback: feedback,
-          options: widget.options,
-          onTap: () => _openDetailPage(feedback),
-          onLike: () => _toggleLike(feedback),
-        );
-      },
+
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.only(top: 4, bottom: bottomPadding),
+        itemCount: feedbacks.length,
+        itemBuilder: (context, index) {
+          final feedback = feedbacks[index];
+          return FeedMatterFeedbackCard(
+            feedback: feedback,
+            options: widget.options,
+            onTap: () => _openDetailPage(feedback),
+            onLike: () => _toggleLike(feedback),
+          );
+        },
+      ),
     );
   }
 }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../feedmatter_ui_helpers.dart';
 import '../feedmatter_ui_options.dart';
+import '../widgets/attachment_list.dart';
 import '../widgets/comment_floor_card.dart';
 
 class FeedMatterDetailPage extends StatefulWidget {
@@ -272,6 +273,11 @@ class _FeedbackDetailCard extends StatelessWidget {
               feedback.content,
               style: Theme.of(context).textTheme.titleMedium,
             ),
+            if (feedback.attachments != null &&
+                feedback.attachments!.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              FeedMatterAttachmentList(attachments: feedback.attachments!),
+            ],
             const SizedBox(height: 16),
             Row(
               children: [

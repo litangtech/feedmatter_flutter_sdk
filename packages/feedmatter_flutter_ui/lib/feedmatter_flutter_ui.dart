@@ -9,5 +9,6 @@ export 'src/pages/feedback_detail_page.dart';
 export 'src/pages/feedback_entry.dart';
 export 'src/pages/feedback_home_page.dart';
 export 'src/pages/feedback_submit_page.dart';
+export 'src/widgets/attachment_list.dart';
 export 'src/widgets/comment_floor_card.dart';
 export 'src/widgets/feedback_card.dart';

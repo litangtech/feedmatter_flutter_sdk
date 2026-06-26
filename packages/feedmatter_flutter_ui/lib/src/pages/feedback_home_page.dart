@@ -25,10 +25,10 @@ class FeedMatterHomePage extends StatefulWidget {
   });
 
   @override
-  State<FeedMatterHomePage> createState() => _FeedMatterHomePageState();
+  State<FeedMatterHomePage> createState() => FeedMatterHomePageState();
 }
 
-class _FeedMatterHomePageState extends State<FeedMatterHomePage>
+class FeedMatterHomePageState extends State<FeedMatterHomePage>
     with SingleTickerProviderStateMixin {
   final _allTabKey = GlobalKey<FeedMatterAllFeedbacksTabState>();
   final _myTabKey = GlobalKey<FeedMatterMyFeedbacksTabState>();
@@ -67,6 +67,8 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage>
     }
   }
 
+  Future<void> reload() => _reloadAllTabs();
+
   Future<void> _reloadAllTabs() async {
     await Future.wait([
       _allTabKey.currentState?.reload() ?? Future.value(),
@@ -81,8 +83,7 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage>
     }
     final created = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (_) =>
-            FeedMatterSubmitPage(config: _config, options: widget.options),
+        builder: (_) => FeedMatterSubmitPage(config: _config, options: widget.options),
       ),
     );
     if (created == true) {
@@ -120,13 +121,16 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage>
     }
   }
 
-  void _onHelpTap() {
+  void _onHelpTap(BuildContext scopedContext) {
     final handler = widget.options.onHelpTap;
     if (handler != null) {
       handler();
       return;
     }
-    showFeedMatterHelpTipsSheet(context);
+    showFeedMatterHelpTipsSheet(
+      scopedContext,
+      theme: widget.options.theme,
+    );
   }
 
   @override
@@ -141,8 +145,9 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage>
     return Scaffold(
       backgroundColor: theme.pageBackground,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: theme.surfaceColor,
         foregroundColor: theme.textPrimary,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
         title: const Text(
@@ -151,7 +156,7 @@ class _FeedMatterHomePageState extends State<FeedMatterHomePage>
         ),
         actions: [
           IconButton(
-            onPressed: _onHelpTap,
+            onPressed: () => _onHelpTap(context),
             icon: const Icon(Icons.help_outline),
           ),
         ],

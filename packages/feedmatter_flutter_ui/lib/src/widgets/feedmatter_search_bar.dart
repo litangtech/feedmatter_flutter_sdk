@@ -39,7 +39,7 @@ class FeedMatterSearchBar extends StatelessWidget {
                 icon: Icon(Icons.clear, color: theme.textSecondary, size: 18),
               ),
         filled: true,
-        fillColor: Colors.white,
+        fillColor: theme.surfaceColor,
         contentPadding: const EdgeInsets.symmetric(vertical: 10),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(theme.searchRadius),

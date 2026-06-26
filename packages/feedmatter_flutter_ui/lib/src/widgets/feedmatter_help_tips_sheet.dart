@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../feedmatter_theme_options.dart';
+import '../theme/feedmatter_theme_scope.dart';
 import '../theme/feedmatter_ui_theme.dart';
 
 class _HelpTipItem {
@@ -31,14 +33,29 @@ const _helpTips = [
   ),
 ];
 
-void showFeedMatterHelpTipsSheet(BuildContext context) {
+void showFeedMatterHelpTipsSheet(
+  BuildContext context, {
+  required FeedMatterThemeOptions theme,
+}) {
   showModalBottomSheet<void>(
     context: context,
-    backgroundColor: Colors.white,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    backgroundColor: Colors.transparent,
+    builder: (sheetContext) => FeedMatterThemeScope.wrap(
+      context: sheetContext,
+      options: theme,
+      child: Builder(
+        builder: (context) {
+          final tokens = FeedMatterUiTheme.of(context);
+          return Container(
+            decoration: BoxDecoration(
+              color: tokens.surfaceColor,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+            ),
+            child: const _FeedMatterHelpTipsSheet(),
+          );
+        },
+      ),
     ),
-    builder: (context) => const _FeedMatterHelpTipsSheet(),
   );
 }
 

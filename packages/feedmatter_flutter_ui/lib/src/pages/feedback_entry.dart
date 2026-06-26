@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../feedmatter_ui_helpers.dart';
 import '../feedmatter_ui_options.dart';
+import '../theme/feedmatter_theme_scope.dart';
 import '../theme/feedmatter_ui_theme.dart';
 import '../widgets/feedmatter_help_tips_sheet.dart';
 import '../widgets/feedmatter_submit_fab.dart';
@@ -24,9 +25,11 @@ class FeedMatterFeedbackEntry extends StatefulWidget {
 }
 
 class _FeedMatterFeedbackEntryState extends State<FeedMatterFeedbackEntry> {
+  final _innerNavigatorKey = GlobalKey<NavigatorState>();
+  final _homeKey = GlobalKey<FeedMatterHomePageState>();
+
   fm.ProjectConfig _config = fm.ProjectConfig.defaultConfig();
   bool _loadingConfig = true;
-  int _homeRefreshKey = 0;
 
   @override
   void initState() {
@@ -57,19 +60,27 @@ class _FeedMatterFeedbackEntryState extends State<FeedMatterFeedbackEntry> {
       showFeedMatterSnackBar(context, '当前项目已关闭反馈发布', isError: true);
       return;
     }
-    final created = await Navigator.of(context).push<bool>(
+    final navigator = _innerNavigatorKey.currentState;
+    if (navigator == null) return;
+
+    final created = await navigator.push<bool>(
       MaterialPageRoute(
-        builder: (_) =>
-            FeedMatterSubmitPage(config: _config, options: widget.options),
+        builder: (_) => FeedMatterSubmitPage(
+          config: _config,
+          options: widget.options,
+        ),
       ),
     );
     if (created == true && mounted) {
-      setState(() => _homeRefreshKey++);
+      await _homeKey.currentState?.reload();
     }
   }
 
   Future<void> _openFaqPage() async {
-    await Navigator.of(context).push<void>(
+    final navigator = _innerNavigatorKey.currentState;
+    if (navigator == null) return;
+
+    await navigator.push<void>(
       MaterialPageRoute(
         builder: (_) => FeedMatterFaqPage(
           config: _config,
@@ -80,32 +91,78 @@ class _FeedMatterFeedbackEntryState extends State<FeedMatterFeedbackEntry> {
     );
   }
 
-  void _onHelpTap() {
+  void _onHelpTap(BuildContext scopedContext) {
     final handler = widget.options.onHelpTap;
     if (handler != null) {
       handler();
       return;
     }
-    showFeedMatterHelpTipsSheet(context);
+    showFeedMatterHelpTipsSheet(
+      scopedContext,
+      theme: widget.options.theme,
+    );
+  }
+
+  void _handlePopInvoked(bool didPop) {
+    if (didPop) return;
+    final innerNav = _innerNavigatorKey.currentState;
+    if (innerNav != null && innerNav.canPop()) {
+      innerNav.pop();
+      return;
+    }
+    Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) {
+    return FeedMatterThemeScope(
+      options: widget.options.theme,
+      child: Builder(
+        builder: (scopedContext) {
+          if (_loadingConfig) {
+            final theme = FeedMatterUiTheme.of(scopedContext);
+            return Scaffold(
+              backgroundColor: theme.pageBackground,
+              body: const Center(child: CircularProgressIndicator()),
+            );
+          }
+
+          return PopScope(
+            canPop: false,
+            onPopInvokedWithResult: (didPop, result) {
+              _handlePopInvoked(didPop);
+            },
+            child: Navigator(
+              key: _innerNavigatorKey,
+              onGenerateRoute: (settings) {
+                return MaterialPageRoute<void>(
+                  settings: settings,
+                  builder: (context) => _buildHomeShell(context),
+                );
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildHomeShell(BuildContext context) {
     final theme = FeedMatterUiTheme.of(context);
 
-    if (_loadingConfig) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-
     if (!_config.faqEnabled) {
-      return FeedMatterHomePage(options: widget.options);
+      return FeedMatterHomePage(
+        key: _homeKey,
+        options: widget.options,
+      );
     }
 
     return Scaffold(
       backgroundColor: theme.pageBackground,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: theme.surfaceColor,
         foregroundColor: theme.textPrimary,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
         title: const Text(
@@ -114,7 +171,7 @@ class _FeedMatterFeedbackEntryState extends State<FeedMatterFeedbackEntry> {
         ),
         actions: [
           IconButton(
-            onPressed: _onHelpTap,
+            onPressed: () => _onHelpTap(context),
             icon: const Icon(Icons.help_outline),
           ),
         ],
@@ -126,10 +183,10 @@ class _FeedMatterFeedbackEntryState extends State<FeedMatterFeedbackEntry> {
           icon: Icons.quiz_outlined,
         ),
         rightAction: FeedMatterSubmitFab(
-          onPressed: _loadingConfig ? null : _openSubmitPage,
+          onPressed: _openSubmitPage,
         ),
         child: FeedMatterHomePage(
-          key: ValueKey(_homeRefreshKey),
+          key: _homeKey,
           options: widget.options,
           embedded: true,
           showFloatingSubmit: false,

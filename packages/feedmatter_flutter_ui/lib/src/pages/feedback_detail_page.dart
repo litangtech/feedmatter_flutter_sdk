@@ -233,8 +233,9 @@ class _FeedMatterDetailPageState extends State<FeedMatterDetailPage> {
     return Scaffold(
       backgroundColor: theme.pageBackground,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: theme.surfaceColor,
         foregroundColor: theme.textPrimary,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
         title: const Text(
@@ -377,7 +378,7 @@ class _FeedbackDetailCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.surfaceColor,
         borderRadius: BorderRadius.circular(theme.cardRadius),
       ),
       padding: const EdgeInsets.all(16),
@@ -434,7 +435,7 @@ class _CommentListHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = FeedMatterUiTheme.of(context);
     return Material(
-      color: Colors.white,
+      color: theme.surfaceColor,
       child: InkWell(
         onTap: onToggle,
         child: Padding(
@@ -483,7 +484,7 @@ class _LoadMoreRepliesButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = FeedMatterUiTheme.of(context);
     return Material(
-      color: Colors.white,
+      color: theme.surfaceColor,
       child: InkWell(
         onTap: loading ? null : onTap,
         child: Padding(
@@ -550,7 +551,7 @@ class _CommentInputBar extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: theme.surfaceColor,
           border: Border(top: BorderSide(color: theme.dividerColor)),
         ),
         child: Column(

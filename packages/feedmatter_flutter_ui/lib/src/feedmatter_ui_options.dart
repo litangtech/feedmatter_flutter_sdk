@@ -2,6 +2,7 @@ import 'package:feedmatter_flutter_sdk/feedmatter_flutter_sdk.dart';
 import 'package:flutter/foundation.dart';
 
 import 'faq/faq_cache.dart';
+import 'feedmatter_theme_options.dart';
 
 class FeedMatterUiOptions {
   const FeedMatterUiOptions({
@@ -14,6 +15,7 @@ class FeedMatterUiOptions {
     this.onFaqUrlTap,
     this.onHelpTap,
     this.onContentUrlTap,
+    this.theme = const FeedMatterThemeOptions(),
   });
 
   final Map<String, dynamic> customInfo;
@@ -33,4 +35,7 @@ class FeedMatterUiOptions {
 
   /// 正文/评论内链接点击回调（不强依赖 url_launcher）。
   final void Function(String url)? onContentUrlTap;
+
+  /// UI 主题配置（浅色/深色/跟随系统、主题色）。
+  final FeedMatterThemeOptions theme;
 }

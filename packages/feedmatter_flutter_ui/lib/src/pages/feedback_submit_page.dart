@@ -136,8 +136,9 @@ class _FeedMatterSubmitPageState extends State<FeedMatterSubmitPage> {
     return Scaffold(
       backgroundColor: theme.pageBackground,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: theme.surfaceColor,
         foregroundColor: theme.textPrimary,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
         title: const Text(
@@ -185,7 +186,7 @@ class _FeedMatterSubmitPageState extends State<FeedMatterSubmitPage> {
               hintText: config.feedbackPrompt ?? '请描述你的问题或建议...',
               hintStyle: TextStyle(color: theme.textSecondary),
               filled: true,
-              fillColor: Colors.white,
+              fillColor: theme.surfaceColor,
               counterText: '',
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),

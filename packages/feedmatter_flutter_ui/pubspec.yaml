@@ -1,0 +1,25 @@
+name: feedmatter_flutter_ui
+description: Ready-to-use Flutter UI widgets for FeedMatter feedback and FAQ flows.
+version: 0.1.0
+homepage: https://github.com/litangtech/feedmatter_flutter_sdk
+
+environment:
+  sdk: '>=3.1.5 <4.0.0'
+  flutter: ">=1.17.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  feedmatter_flutter_sdk:
+    path: ../../
+  file_picker:
+    git:
+      url: https://github.com/miguelpruivo/flutter_file_picker.git
+      ref: master
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+flutter:

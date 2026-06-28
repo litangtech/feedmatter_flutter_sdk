@@ -1,7 +1,12 @@
-## 1.0.6
+## 1.0.7
 
 * ⚠️ 移除 `uploadPrivateFile()` 和 `getSignedUrl()`。附件统一使用 `uploadPublicFile()` 公开上传。
 * 📝 更新 README 和 example 文档，明确附件只支持公开 URL。
+
+## 1.0.6
+
+* 🧩 新增独立 UI 包 `feedmatter_flutter_ui`（`packages/feedmatter_flutter_ui`），提供反馈列表、提交、详情、FAQ 及组合入口 Widget。
+* 📝 更新 README 与 example，改为依赖 UI 包接入，不再要求复制 `feedmatter_ui/` 目录。
 
 ## 1.0.5
 

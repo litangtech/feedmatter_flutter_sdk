@@ -533,8 +533,11 @@ class FeedMatterClient {
   }
 
   /// 上传公开文件
-  Future<String> uploadPublicFile(File file) async {
-    _validateFile(file);
+  Future<String> uploadPublicFile(
+    File file, {
+    int? maxSize,
+  }) async {
+    _validateFile(file, maxSize: maxSize ?? 40 * 1024 * 1024);
     final compressFile = await _compressFile(file);
 
     try {
@@ -564,6 +567,52 @@ class FeedMatterClient {
         }
       }
     }
+  }
+
+  /// 上传私密文件
+  Future<String> uploadPrivateFile(
+    File file, {
+    int? maxSize,
+  }) async {
+    _validateFile(file, maxSize: maxSize ?? 40 * 1024 * 1024);
+    final compressFile = await _compressFile(file);
+
+    try {
+      final fileName = _getSafeFileName(file.path);
+      final formData = FormData.fromMap({
+        'file': await MultipartFile.fromFile(
+          compressFile.path,
+          filename: fileName,
+        ),
+      });
+
+      final response = await _handleResponse(() => _request(
+            'POST',
+            '/api/v2/upload/private',
+            data: formData,
+          ));
+
+      return response['url'];
+    } finally {
+      if (compressFile.path != file.path) {
+        try {
+          compressFile.deleteSync();
+        } catch (e) {
+          if (config?.debug == true) {
+            _debugLog('Delete temp file failed: $e');
+          }
+        }
+      }
+    }
+  }
+
+  /// 获取私密文件的签名URL
+  Future<String> getSignedUrl(String key) async {
+    final response = await _handleResponse(() => _request(
+          'GET',
+          '/api/v2/upload/private/$key',
+        ));
+    return response['url'];
   }
 
   /// 切换点赞状态

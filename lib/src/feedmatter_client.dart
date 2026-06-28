@@ -661,23 +661,20 @@ class FeedMatterClient {
   }) {
     final timestamp = DateTime.now().millisecondsSinceEpoch.toString();
 
-    // 根据请求类型选择要签名的参数
     Map<String, dynamic>? signParams;
     if (method == 'GET') {
       signParams = queryParameters;
     } else {
-      // POST/PUT 等请求
       if (data is Map<String, dynamic>) {
         signParams = data;
       } else if (data is FormData) {
-        // 对于文件上传，使用空对象进行签名
         signParams = {};
       }
     }
 
     final signature = _generateSignature(timestamp, method, path, signParams);
 
-    var requestHeaders = _headers;
+    var requestHeaders = Map<String, dynamic>.from(_headers);
     requestHeaders['X-Timestamp'] = timestamp;
     requestHeaders['X-Signature'] = signature;
 

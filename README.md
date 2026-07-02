@@ -585,7 +585,7 @@ try {
 | `store_integration.sync_failed` | 商店评论渠道同步失败（需在渠道设置中订阅） |
 | `system.test` | 管理后台测试回调 |
 
-完整 Webhook 集成说明（事件列表、签名、JSON Schema、投递日志）：见仓库 [`docs/callback-integration-guide.md`](https://github.com/litangtech/FeedMatter/blob/main/docs/callback-integration-guide.md)。
+完整 Webhook 集成说明（事件列表、签名、JSON Schema、投递日志）：见仓库 [`docs/integration/callback-integration-guide.md`](https://github.com/litangtech/FeedMatter/blob/main/docs/integration/callback-integration-guide.md)。
 
 回调请求格式：
 

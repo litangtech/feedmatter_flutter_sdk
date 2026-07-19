@@ -110,7 +110,8 @@ class FeedMatterClient {
             if (response.data is Map) {
               errorBody = response.data as Map<String, dynamic>;
               message = errorBody['message'] as String? ?? '请求失败';
-              code = errorBody['code'] as String?;
+              final rawCode = errorBody['code'];
+              code = rawCode?.toString();
             } else if (response.data is String) {
               // 处理响应为普通字符串的情况（通常是服务器的错误堆栈）
               final String responseText = response.data as String;

@@ -1,3 +1,8 @@
+## 3.0.0
+
+* 🔖 与 FeedMatter 第三期平台化重构统一版本号。
+* ⚠️ 这是重大版本升级；接入方升级前应核对服务端 3.0.0 API 和附件公开上传变更。
+
 ## 1.0.7
 
 * ⚠️ 移除 `uploadPrivateFile()` 和 `getSignedUrl()`。附件统一使用 `uploadPublicFile()` 公开上传。

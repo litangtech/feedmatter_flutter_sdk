@@ -18,7 +18,7 @@
 
 ```yaml
 dependencies:
-  feedmatter_flutter_sdk: ^1.0.6
+  feedmatter_flutter_sdk: ^3.0.0
   feedmatter_flutter_ui: ^0.1.0
 ```
 

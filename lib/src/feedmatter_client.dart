@@ -9,6 +9,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
+import 'anonymous_identity_store.dart';
 import 'config.dart';
 import 'constants.dart';
 import 'enums/feedback_type.dart';
@@ -31,6 +32,11 @@ class FeedMatterClient {
   FeedMatterConfig? config;
   FeedMatterUser? _user;
   Dio? _dio;
+  final AnonymousIdentityStore _anonymousIdentityStore =
+      AnonymousIdentityStore();
+  Future<void>? _identityResetFuture;
+  int _identityVersion = 0;
+  final Set<Future<void>> _registeredRequests = {};
   void Function(FeedMatterException)? onError;
 
   // 私有静态实例
@@ -56,9 +62,13 @@ class FeedMatterClient {
     FeedMatterUser user, {
     void Function(FeedMatterException)? onError,
   }) {
+    final nextUser = user.userId.trim().isEmpty ? null : user;
+    _identityVersion += 1;
+    _rotateIfLeavingRegisteredIdentity(nextUser);
     this.config = config;
-    _user = user;
+    _user = nextUser;
     this.onError = onError;
+    _dio = null;
 
     if (config.debug) {
       //打印配置信息
@@ -67,26 +77,54 @@ class FeedMatterClient {
     }
   }
 
+  /// 初始化 SDK。省略 [user] 时使用持久化的匿名安装身份。
+  Future<void> initialize(
+    FeedMatterConfig config, {
+    FeedMatterUser? user,
+    void Function(FeedMatterException)? onError,
+  }) async {
+    final nextUser =
+        user != null && user.userId.trim().isNotEmpty ? user : null;
+    _identityVersion += 1;
+    _rotateIfLeavingRegisteredIdentity(nextUser);
+    this.config = config;
+    _user = nextUser;
+    this.onError = onError;
+    _dio = null;
+    if (_user == null) {
+      await _getAnonymousId(config, registered: false);
+    }
+  }
+
+  /// 设置登录用户；空白 userId 会恢复匿名身份。
+  void setUser(FeedMatterUser user) {
+    final nextUser = user.userId.trim().isEmpty ? null : user;
+    _identityVersion += 1;
+    _rotateIfLeavingRegisteredIdentity(nextUser);
+    _user = nextUser;
+  }
+
   Dio getDio() {
     _dio ??= _createDio();
     return _dio!;
   }
 
   Dio _createDio() {
-    if (config == null) {
+    final currentConfig = config;
+    if (currentConfig == null) {
       throw FeedMatterConfigException(
         '请先调用 init 方法设置配置信息',
         code: 'CONFIG_NOT_SET',
       );
     }
     var dio = Dio(BaseOptions(
-      baseUrl: config!.baseUrl,
-      connectTimeout: Duration(seconds: config!.timeout),
-      receiveTimeout: Duration(seconds: config!.timeout),
-      headers: _headers,
+      baseUrl: currentConfig.baseUrl,
+      connectTimeout: Duration(seconds: currentConfig.timeout),
+      receiveTimeout: Duration(seconds: currentConfig.timeout),
+      headers: _baseHeadersFor(currentConfig),
     ));
 
-    if (config!.debug) {
+    if (currentConfig.debug) {
       dio.interceptors.add(LogInterceptor(
         requestHeader: false,
         responseHeader: false,
@@ -153,6 +191,7 @@ class FeedMatterClient {
           onError?.call(error);
           handler.reject(DioException(
             requestOptions: e.requestOptions,
+            response: e.response,
             error: error,
           ));
           return;
@@ -176,11 +215,47 @@ class FeedMatterClient {
 
   /// 清除用户信息
   void clearUser() {
+    _identityVersion += 1;
+    _rotateIfLeavingRegisteredIdentity(null);
     _user = null;
-    // 移除用户相关的 headers
-    _dio?.options.headers.remove('X-User-Id');
-    _dio?.options.headers.remove('X-User-Name');
-    _dio?.options.headers.remove('X-User-Avatar');
+  }
+
+  void _rotateIfLeavingRegisteredIdentity(FeedMatterUser? nextUser) {
+    final previousUser = _user;
+    if (previousUser == null ||
+        previousUser.userId.trim().isEmpty ||
+        previousUser.userId == nextUser?.userId) {
+      return;
+    }
+    final previousReset = _identityResetFuture;
+    final registeredRequests = List<Future<void>>.of(_registeredRequests);
+    late final Future<void> pending;
+    pending = _resetClaimedAnonymousIdentities(
+      previousReset,
+      registeredRequests,
+    );
+    _identityResetFuture = pending;
+    pending.whenComplete(() {
+      if (identical(_identityResetFuture, pending)) {
+        _identityResetFuture = null;
+      }
+    }).catchError((Object _) {});
+    pending.catchError((Object _) {});
+  }
+
+  Future<void> _resetClaimedAnonymousIdentities(
+    Future<void>? previousReset,
+    List<Future<void>> registeredRequests,
+  ) async {
+    if (previousReset != null) {
+      try {
+        await previousReset;
+      } catch (_) {
+        // 上一次轮换失败时仍允许重试。
+      }
+    }
+    await Future.wait(registeredRequests);
+    await _anonymousIdentityStore.rotateAllClaimed();
   }
 
   String _getAppType() {
@@ -192,7 +267,7 @@ class FeedMatterClient {
   }
 
   /// 获取设备和应用信息
-  Future<ClientInfo> _getClientInfo() async {
+  Future<ClientInfo> _getClientInfo([FeedMatterConfig? configSnapshot]) async {
     final packageInfo = await PackageInfo.fromPlatform();
     final deviceInfoPlugin = DeviceInfoPlugin();
 
@@ -239,7 +314,7 @@ class FeedMatterClient {
       appVersionName: packageInfo.version,
       appPackage: packageInfo.packageName,
       appType: _getAppType(),
-      appMarket: config?.appMarket,
+      appMarket: (configSnapshot ?? config)?.appMarket,
       deviceModel: deviceModel,
       deviceBrand: deviceBrand,
       deviceSysVersion: deviceSysVersion,
@@ -247,21 +322,71 @@ class FeedMatterClient {
     );
   }
 
-  Map<String, String> get _headers {
-    if (_user == null || config == null) {
-      throw FeedMatterConfigException(
-        '请先调用 init 方法设置配置信息',
-        code: 'CONFIG_NOT_SET',
-      );
-    }
+  Map<String, String> _baseHeadersFor(FeedMatterConfig currentConfig) {
     return {
-      'X-API-Key': config!.apiKey,
-      'X-User-Id': _user!.userId,
-      'X-User-Name': Uri.encodeComponent(_user!.userName),
-      if (_user!.userAvatar != null)
-        'X-User-Avatar': Uri.encodeComponent(_user!.userAvatar!),
+      'X-API-Key': currentConfig.apiKey,
       'Content-Type': 'application/json',
     };
+  }
+
+  Future<Map<String, dynamic>> _identityHeaders(
+    FeedMatterUser? initialUser,
+    FeedMatterConfig requestConfig,
+  ) async {
+    final user = initialUser;
+    String? anonymousId;
+    try {
+      anonymousId = await _getAnonymousId(
+        requestConfig,
+        registered: user != null && user.userId.trim().isNotEmpty,
+      );
+    } catch (_) {
+      if (user != null && user.userId.trim().isNotEmpty) {
+        return _userHeaders(user);
+      }
+      rethrow;
+    }
+    if (user != null && user.userId.trim().isNotEmpty) {
+      return {
+        ..._userHeaders(user),
+        if (anonymousId != null) 'X-Anonymous-Id': anonymousId,
+      };
+    }
+    return {
+      // 兼容仍强制要求 X-User-Id Header 的旧服务端。
+      'X-User-Id': '',
+      'X-Anonymous-Id': anonymousId!,
+    };
+  }
+
+  Map<String, dynamic> _userHeaders(FeedMatterUser user) {
+    return {
+      'X-User-Id': user.userId,
+      'X-User-Name': Uri.encodeComponent(user.userName),
+      if (user.userAvatar != null)
+        'X-User-Avatar': Uri.encodeComponent(user.userAvatar!),
+    };
+  }
+
+  Future<String?> _getAnonymousId(
+    FeedMatterConfig currentConfig, {
+    required bool registered,
+  }) async {
+    final reset = _identityResetFuture;
+    if (reset != null) {
+      await reset;
+    }
+    final namespace = _anonymousNamespace(currentConfig);
+    return registered
+        ? _anonymousIdentityStore.getForRegistered(namespace)
+        : _anonymousIdentityStore.getForAnonymous(namespace);
+  }
+
+  String _anonymousNamespace(FeedMatterConfig currentConfig) {
+    return sha256
+        .convert(utf8.encode(currentConfig.apiKey))
+        .toString()
+        .substring(0, 32);
   }
 
   Future<T> _handleResponse<T>(Future<Response<T>> Function() request) async {
@@ -303,7 +428,11 @@ class FeedMatterClient {
     Map<String, dynamic>? customInfo,
     List<Attachment>? attachments,
   }) async {
-    final clientInfo = await _getClientInfo();
+    final requestUser = _user;
+    final requestConfig = config;
+    final requestDio = getDio();
+    final requestIdentityVersion = _identityVersion;
+    final clientInfo = await _getClientInfo(requestConfig);
     final response = await _handleResponse(
       () => _request(
         'POST',
@@ -316,6 +445,11 @@ class FeedMatterClient {
           if (attachments != null && attachments.isNotEmpty)
             'attachments': attachments.map((a) => a.toJson()).toList(),
         },
+        identityUser: requestUser,
+        configSnapshot: requestConfig,
+        dioSnapshot: requestDio,
+        identityVersion: requestIdentityVersion,
+        identityCaptured: true,
       ),
     );
 
@@ -390,7 +524,11 @@ class FeedMatterClient {
     List<Attachment>? attachments,
     String? parentCommentId,
   }) async {
-    final clientInfo = await _getClientInfo();
+    final requestUser = _user;
+    final requestConfig = config;
+    final requestDio = getDio();
+    final requestIdentityVersion = _identityVersion;
+    final clientInfo = await _getClientInfo(requestConfig);
     final Map<String, dynamic> data = {
       'content': content,
       'clientInfo': clientInfo.toJson(),
@@ -403,6 +541,11 @@ class FeedMatterClient {
           'POST',
           '/api/v2/feedbacks/$feedbackId/comments',
           data: data,
+          identityUser: requestUser,
+          configSnapshot: requestConfig,
+          dioSnapshot: requestDio,
+          identityVersion: requestIdentityVersion,
+          identityCaptured: true,
         )).then((json) => Comment.fromJson(json));
   }
 
@@ -538,6 +681,10 @@ class FeedMatterClient {
     File file, {
     int? maxSize,
   }) async {
+    final requestUser = _user;
+    final requestConfig = config;
+    final requestDio = getDio();
+    final requestIdentityVersion = _identityVersion;
     _validateFile(file, maxSize: maxSize ?? 40 * 1024 * 1024);
     final compressFile = await _compressFile(file);
 
@@ -554,6 +701,11 @@ class FeedMatterClient {
             'POST',
             '/api/v2/upload/public',
             data: formData,
+            identityUser: requestUser,
+            configSnapshot: requestConfig,
+            dioSnapshot: requestDio,
+            identityVersion: requestIdentityVersion,
+            identityCaptured: true,
           ));
 
       return response['url'];
@@ -575,6 +727,10 @@ class FeedMatterClient {
     File file, {
     int? maxSize,
   }) async {
+    final requestUser = _user;
+    final requestConfig = config;
+    final requestDio = getDio();
+    final requestIdentityVersion = _identityVersion;
     _validateFile(file, maxSize: maxSize ?? 40 * 1024 * 1024);
     final compressFile = await _compressFile(file);
 
@@ -591,6 +747,11 @@ class FeedMatterClient {
             'POST',
             '/api/v2/upload/private',
             data: formData,
+            identityUser: requestUser,
+            configSnapshot: requestConfig,
+            dioSnapshot: requestDio,
+            identityVersion: requestIdentityVersion,
+            identityCaptured: true,
           ));
 
       return response['url'];
@@ -637,8 +798,13 @@ class FeedMatterClient {
   }
 
   // 每次请求生成签名
-  String _generateSignature(String timestamp, String method, String path,
-      Map<String, dynamic>? params) {
+  String _generateSignature(
+    String timestamp,
+    String method,
+    String path,
+    Map<String, dynamic>? params,
+    FeedMatterConfig requestConfig,
+  ) {
     // 如果没有参数，使用空 Map
     final signParams = params ?? {};
 
@@ -664,12 +830,12 @@ class FeedMatterClient {
     final String stringToSign =
         '$method\n$normalizedPath\n$timestamp\n$paramsJson';
 
-    if (config?.debug == true) {
+    if (requestConfig.debug) {
       _debugLog('String to sign: $stringToSign');
     }
 
     // 使用 apiSecret 进行 HMAC-SHA256 签名
-    final hmac = Hmac(sha256, utf8.encode(config!.apiSecret));
+    final hmac = Hmac(sha256, utf8.encode(requestConfig.apiSecret));
     final digest = hmac.convert(utf8.encode(stringToSign));
     return base64.encode(digest.bytes);
   }
@@ -679,6 +845,7 @@ class FeedMatterClient {
       final lowerKey = key.toLowerCase();
       if (lowerKey == 'x-api-key' ||
           lowerKey == 'x-signature' ||
+          lowerKey == 'x-anonymous-id' ||
           lowerKey == 'authorization') {
         return MapEntry(key, _maskHeaderValue(value));
       }
@@ -708,7 +875,23 @@ class FeedMatterClient {
     String path, {
     Object? data,
     Map<String, dynamic>? queryParameters,
-  }) {
+    FeedMatterUser? identityUser,
+    FeedMatterConfig? configSnapshot,
+    Dio? dioSnapshot,
+    int? identityVersion,
+    bool identityCaptured = false,
+  }) async {
+    final requestConfig = identityCaptured ? configSnapshot : config;
+    if (requestConfig == null) {
+      throw FeedMatterConfigException(
+        '请先调用 init 方法设置配置信息',
+        code: 'CONFIG_NOT_SET',
+      );
+    }
+    final requestDio = identityCaptured ? dioSnapshot! : getDio();
+    final requestUser = identityCaptured ? identityUser : _user;
+    final requestIdentityVersion =
+        identityCaptured ? identityVersion! : _identityVersion;
     final timestamp = DateTime.now().millisecondsSinceEpoch.toString();
 
     Map<String, dynamic>? signParams;
@@ -722,28 +905,102 @@ class FeedMatterClient {
       }
     }
 
-    final signature = _generateSignature(timestamp, method, path, signParams);
+    final signature =
+        _generateSignature(timestamp, method, path, signParams, requestConfig);
 
-    var requestHeaders = Map<String, dynamic>.from(_headers);
+    final identityAwareRequest = _usesClientIdentity(path);
+    var requestHeaders =
+        Map<String, dynamic>.from(_baseHeadersFor(requestConfig));
+    if (identityAwareRequest) {
+      requestHeaders.addAll(
+        await _identityHeaders(requestUser, requestConfig),
+      );
+    }
+    if (requestIdentityVersion != _identityVersion) {
+      throw FeedMatterConfigException(
+        '请求准备期间用户或项目已切换，请重试',
+        code: 'IDENTITY_CHANGED',
+      );
+    }
     requestHeaders['X-Timestamp'] = timestamp;
     requestHeaders['X-Signature'] = signature;
 
-    if (config?.debug == true) {
+    if (requestConfig.debug) {
       _debugLog('Request headers: ${_redactHeaders(requestHeaders)}');
       _debugLog('Request sign params: $signParams');
       _debugLog('Request params: $data');
       _debugLog('Timestamp: $timestamp');
     }
 
-    return getDio().request(
-      path,
-      data: data,
-      queryParameters: queryParameters,
-      options: Options(
-        method: method,
-        headers: requestHeaders,
-      ),
-    );
+    final registeredRequest = identityAwareRequest &&
+        requestUser != null &&
+        requestUser.userId.trim().isNotEmpty;
+    Completer<void>? requestCompleted;
+    Future<void>? requestCompletion;
+    if (registeredRequest) {
+      requestCompleted = Completer<void>();
+      requestCompletion = requestCompleted.future;
+      _registeredRequests.add(requestCompletion);
+    }
+    try {
+      final response = await requestDio.request(
+        path,
+        data: data,
+        queryParameters: queryParameters,
+        options: Options(
+          method: method,
+          headers: requestHeaders,
+        ),
+      );
+      await _handleAnonymousClaimResponse(
+        response,
+        registeredRequest,
+        requestHeaders,
+        requestConfig,
+      );
+      return response;
+    } on DioException catch (error) {
+      final response = error.response;
+      if (response != null && !registeredRequest) {
+        await _handleAnonymousClaimResponse(
+          response,
+          registeredRequest,
+          requestHeaders,
+          requestConfig,
+        );
+      }
+      rethrow;
+    } finally {
+      if (registeredRequest) {
+        requestCompleted!.complete();
+        _registeredRequests.remove(requestCompletion);
+      }
+    }
+  }
+
+  bool _usesClientIdentity(String path) {
+    return path.startsWith('/api/v1/feedbacks') ||
+        path.startsWith('/api/v2/feedbacks');
+  }
+
+  Future<void> _handleAnonymousClaimResponse(
+    Response response,
+    bool registeredRequest,
+    Map<String, dynamic> requestHeaders,
+    FeedMatterConfig requestConfig,
+  ) async {
+    if (response.headers.value('X-Anonymous-Claimed') != 'true') {
+      return;
+    }
+    final namespace = _anonymousNamespace(requestConfig);
+    if (registeredRequest) {
+      await _anonymousIdentityStore.markClaimed(namespace);
+      return;
+    }
+    final anonymousId = requestHeaders['X-Anonymous-Id']?.toString();
+    if (anonymousId != null) {
+      await _anonymousIdentityStore.invalidateIfCurrent(namespace, anonymousId);
+    }
   }
 
   /// 获取常见问题列表（带版本检查）

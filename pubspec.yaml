@@ -5,7 +5,7 @@ homepage: https://github.com/litangtech/feedmatter_flutter_sdk
 
 environment:
   sdk: '>=3.1.5 <4.0.0'
-  flutter: ">=1.17.0"
+  flutter: ">=3.13.0"
 
 platforms:
   android:
@@ -23,6 +23,8 @@ dependencies:
   device_info_plus: ^13.1.0
   crypto: ^3.0.7
   flutter_image_compress: ^2.3.0
+  shared_preferences: 2.2.3
+  uuid: ^4.6.0
 
 dev_dependencies:
   flutter_test:

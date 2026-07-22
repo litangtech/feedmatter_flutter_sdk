@@ -151,7 +151,7 @@ client.init(
 
 1. **准备项目凭证**：在 FeedMatter 后台创建项目，获取该项目的 `apiKey` 和 `apiSecret`。
 2. **配置依赖**：普通 Flutter 使用 pub.dev 版本；鸿蒙 Flutter 使用 `harmony` 分支。
-3. **应用启动时初始化**：建议在 `main()`、首页初始化或用户信息加载完成后调用 `FeedMatterClient.instance.init(...)`。
+3. **应用启动时初始化**：建议在 `main()`、首页初始化或用户信息加载完成后调用 `FeedMatterClient.instance.initialize(...)`。
 4. **先获取项目配置**：进入反馈入口前建议调用 `getProjectConfig()`，根据服务端配置决定是否展示“提交反馈”“评论”“附件”等入口。
 5. **登录态变化时更新用户**：登录或切换账号时调用 `setUser(...)`；SDK 会关联当前项目下该安装的匿名反馈。退出时调用 `clearUser()`，SDK 会轮换匿名 ID，避免共享设备上的账号数据串联。
 6. **设置渠道标识**：`appMarket` 建议传 App 的真实渠道，例如 `appstore`、`googleplay`、`harmony`、`xiaomi`、`huawei` 等，便于后台定位反馈来源。
@@ -181,6 +181,51 @@ Future<void> initFeedMatter(AppUser? user) async {
   );
 }
 ```
+
+### 1.1 匿名身份与登录合并（必读）
+
+`initialize(...)` 用于配置 FeedMatter 项目，`setUser(...)` 和 `clearUser()` 用于改变当前身份：
+
+```dart
+final client = FeedMatterClient.instance;
+
+// 1. 未登录启动
+await client.initialize(config);
+
+// 2. 用户登录
+client.setUser(
+  FeedMatterUser(
+    userId: account.id, // 必须是长期稳定的业务用户 ID
+    userName: account.name,
+    userAvatar: account.avatar,
+  ),
+);
+
+// 3. 账号 A 切换到账号 B
+client.setUser(
+  FeedMatterUser(
+    userId: accountB.id,
+    userName: accountB.name,
+    userAvatar: accountB.avatar,
+  ),
+);
+
+// 4. 退出登录
+client.clearUser();
+```
+
+登录后的第一次反馈相关请求会同时携带注册用户 ID 和当前匿名安装 ID。服务端会一次性把匿名反馈、评论和点赞迁移到注册用户，确认后 SDK 不再发送该匿名 ID。
+
+参与身份合并的请求包括反馈列表、反馈详情、我的反馈、创建反馈、评论、回复和点赞。FAQ、项目配置和文件上传不会触发身份合并，也不会阻塞退出登录。
+
+接入限制：
+
+- 不要在登录态变化时重复调用 `initialize(...)`。
+- 不要使用昵称、手机号或邮箱作为 `userId`，除非该值在业务系统中永久不变。
+- 不要自行生成、保存或同步 FeedMatter 匿名 ID。
+- 登录后的首次请求失败时不要清理 SDK；后续反馈请求会继续完成合并。
+- 业务账号退出成功时必须调用 `clearUser()`。
+- 旧版已登录 SDK 可以继续使用；依赖匿名反馈的旧版 SDK 必须升级到 3.0.0。
 
 提交反馈时附加业务上下文：
 

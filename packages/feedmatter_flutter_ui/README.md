@@ -34,29 +34,37 @@ dependencies:
 
 然后运行 `flutter pub get`。
 
-> SDK 初始化、鉴权与 API 说明见根目录 [README 快速开始](../../README.md#快速开始)。
+> SDK 初始化、鉴权、匿名身份与 API 说明见根目录 [README 快速开始](../../README.md#快速开始)，以及 [客户端身份与匿名反馈合并](https://github.com/litangtech/FeedMatter/blob/main/docs/product/client-identity.md)。
 
 ## 快速开始
 
 ### 1. 初始化 SDK
 
-在应用启动时初始化 `FeedMatterClient`（与 SDK 文档相同）：
+在应用启动时初始化 `FeedMatterClient`（与 SDK 文档相同）。推荐使用 `initialize(...)`，未登录时可省略 `user`：
 
 ```dart
 import 'package:feedmatter_flutter_sdk/feedmatter_flutter_sdk.dart';
 
-FeedMatterClient.instance.init(
+await FeedMatterClient.instance.initialize(
   const FeedMatterConfig(
     baseUrl: 'https://your-api.example.com',
     apiKey: 'your-api-key',
     apiSecret: 'your-api-secret',
     appMarket: 'app-store',
   ),
-  FeedMatterUser(userId: 'user-id', userName: 'User Name'),
+  user: FeedMatterUser(userId: 'user-id', userName: 'User Name'),
   onError: (error) {
     // 全局错误处理
   },
 );
+
+// 登录 / 换号
+FeedMatterClient.instance.setUser(
+  FeedMatterUser(userId: account.id, userName: account.name),
+);
+
+// 退出登录（会轮换已合并的匿名 ID）
+FeedMatterClient.instance.clearUser();
 ```
 
 ### 2. 打开反馈模块（推荐）

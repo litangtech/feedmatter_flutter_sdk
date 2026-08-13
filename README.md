@@ -15,6 +15,16 @@ and the Flutter guide for
 
 FeedMatter Flutter SDK 提供了与 FeedMatter API 交互的简单方式，用于收集和管理用户反馈。
 
+## 文档导航
+
+| 文档 | 说明 |
+| ---- | ---- |
+| 本文 | SDK API 接入、鉴权、数据模型、错误处理 |
+| [客户端身份与匿名反馈合并](https://github.com/litangtech/FeedMatter/blob/main/docs/product/client-identity.md) | 匿名身份、登录合并、换号与退出（**必读**） |
+| [CHANGELOG](CHANGELOG.md) | 版本变更说明 |
+| [feedmatter_flutter_ui 使用说明](packages/feedmatter_flutter_ui/README.md) | 开箱即用反馈 UI、主题定制、页面与组件 |
+| [example 示例项目](example) | 可运行的完整接入 Demo |
+
 ## 功能特性
 
 - 创建和管理反馈
@@ -22,10 +32,12 @@ FeedMatter Flutter SDK 提供了与 FeedMatter API 交互的简单方式，用�
 - 文件上传（支持图片和视频）
 - 点赞功能
 - 项目配置管理
+- 常见问题（FAQ）列表和版本缓存
+- 按项目隔离的持久匿名安装身份，以及登录后一次性合并
 
 ## 全局概览
 
-FeedMatter Flutter SDK 主要负责 App 端反馈入口的接入：读取项目配置、提交反馈、展示反馈列表、展示楼中楼评论、上传附件，并自动完成 API 鉴权签名。
+FeedMatter Flutter SDK 主要负责 App 端反馈入口的接入：读取项目配置、展示常见问题、提交反馈、展示反馈列表、展示楼中楼评论、上传附件，并自动完成 API 鉴权签名。
 
 ### 支持平台
 
@@ -46,15 +58,13 @@ FeedMatter Flutter SDK 主要负责 App 端反馈入口的接入：读取项目�
 | 楼中楼评论 | `getCommentsFloor()` | `GET /api/v2/feedbacks/{id}/comments/floor` | 展示主评论和首屏回复 |
 | 更多回复 | `getCommentReplies()` | `GET /api/v2/feedbacks/comments/{mainCommentId}/replies` | 加载某条主评论下的更多回复 |
 | 公开上传 | `uploadPublicFile()` | `POST /api/v2/upload/public` | 上传可直接访问的图片 / 视频 / 文件 |
-| 私密上传 | `uploadPrivateFile()` | `POST /api/v2/upload/private` | 上传需要签名 URL 访问的文件 |
-| 私密文件访问 | `getSignedUrl()` | `GET /api/v2/upload/private/{key}` | 获取私密文件临时访问 URL |
 | FAQ 列表 | `getFaqList()` | `GET /api/v1/faq` | 获取常见问题内容，支持版本检查 |
 
 ### 推荐接入流程
 
 1. 在 FeedMatter 后台创建项目，获取 `apiKey` 和 `apiSecret`。
 2. 安装 SDK。普通 Flutter 使用 pub.dev 版本；鸿蒙 Flutter 使用 `harmony` 分支。
-3. 应用启动时调用 `FeedMatterClient.instance.init(...)`，传入项目凭证、用户信息和渠道 `appMarket`。
+3. 应用启动时调用 `FeedMatterClient.instance.initialize(...)`；未登录时 SDK 会生成并持久化匿名安装 ID，登录后再调用 `setUser(...)`。
 4. 进入反馈入口前调用 `getProjectConfig()`，根据项目配置决定是否显示反馈、评论、附件入口。
 5. 用户提交反馈时调用 `createFeedback()`；如有附件，先上传文件再把 `Attachment` 传入反馈。
 6. 反馈详情页使用 `getCommentsFloor()` 展示楼中楼评论，用 `getCommentReplies()` 加载更多回复。
@@ -75,7 +85,7 @@ FeedMatter Flutter SDK 主要负责 App 端反馈入口的接入：读取项目�
 
 ```yaml
 dependencies:
-  feedmatter_flutter_sdk: ^1.0.3
+  feedmatter_flutter_sdk: ^3.0.0
 ```
 
 然后运行：
@@ -106,7 +116,7 @@ dependencies:
 
 ### 1. 初始化 SDK
 
-在使用 SDK 之前，需要先进行初始化。建议在应用启动时（比如在 `main.dart` 或首页的 `initState` 中）进行：
+在使用 SDK 之前，需要先进行初始化。建议在应用启动时（比如在 `main.dart` 或首页的 `initState` 中）进行。推荐使用 `initialize(...)`，未登录时可省略 `user`：
 
 ```dart
 import 'package:feedmatter_flutter_sdk/feedmatter_flutter_sdk.dart' as feedmatter;
@@ -114,8 +124,8 @@ import 'package:feedmatter_flutter_sdk/feedmatter_flutter_sdk.dart' as feedmatte
 // 获取 SDK 实例
 final client = feedmatter.FeedMatterClient.instance;
 
-// 初始化配置
-client.init(
+// 初始化配置（未登录：省略 user，使用持久匿名安装身份）
+await client.initialize(
   feedmatter.FeedMatterConfig(
     baseUrl: 'https://fmapi.litangkj.com',  // API 地址
     apiKey: 'your-api-key',                 // 项目 API Key
@@ -124,8 +134,8 @@ client.init(
     timeout: 30,                            // 超时时间（秒）
     debug: true,                            // 是否开启调试模式
   ),
-  feedmatter.FeedMatterUser(
-    userId: 'user-id',                      // 用户 ID
+  user: feedmatter.FeedMatterUser(
+    userId: 'user-id',                      // 用户 ID（已登录时传入）
     userName: 'User Name',                  // 用户名
     userAvatar: 'https://example.com/avatar.png',  // 用户头像（可选）
   ),
@@ -137,6 +147,8 @@ client.init(
 ```
 
 > **注意**：SDK 的初始化是一个轻量级操作，不会产生额外的网络请求或性能开销。只有在调用具体的 API 方法（如提交反馈、获取列表等）时，才会发起实际的网络请求。这意味着你可以在应用启动时就进行初始化，而不用担心影响应用的启动速度。
+>
+> 同步方法 `init(...)` 仍可用，但要求传入用户对象，且不会预先加载匿名 ID；新接入请优先使用 `initialize(...)`。
 
 ### 接入清单（参考钱迹 App）
 
@@ -144,19 +156,19 @@ client.init(
 
 1. **准备项目凭证**：在 FeedMatter 后台创建项目，获取该项目的 `apiKey` 和 `apiSecret`。
 2. **配置依赖**：普通 Flutter 使用 pub.dev 版本；鸿蒙 Flutter 使用 `harmony` 分支。
-3. **应用启动时初始化**：建议在 `main()`、首页初始化或用户信息加载完成后调用 `FeedMatterClient.instance.init(...)`。
+3. **应用启动时初始化**：建议在 `main()`、首页初始化或用户信息加载完成后调用 `FeedMatterClient.instance.initialize(...)`。
 4. **先获取项目配置**：进入反馈入口前建议调用 `getProjectConfig()`，根据服务端配置决定是否展示“提交反馈”“评论”“附件”等入口。
-5. **登录态变化时重新初始化**：如果用户登录、切换账号或退出登录，需要用新的 `FeedMatterUser` 重新调用 `init`，或退出时调用 `clearUser()`。
+5. **登录态变化时更新用户**：登录或切换账号时调用 `setUser(...)`；SDK 会关联当前项目下该安装的匿名反馈。退出时调用 `clearUser()`，SDK 会轮换匿名 ID，避免共享设备上的账号数据串联。
 6. **设置渠道标识**：`appMarket` 建议传 App 的真实渠道，例如 `appstore`、`googleplay`、`harmony`、`xiaomi`、`huawei` 等，便于后台定位反馈来源。
 7. **补充业务上下文**：提交反馈时可通过 `customInfo` 传入业务信息，例如包名、渠道、语言、会员状态、页面来源等。
-8. **附件先上传再提交**：如果反馈带附件，先调用 `uploadPublicFile()` 或 `uploadPrivateFile()`，再把返回地址组装为 `Attachment` 随反馈提交。
+8. **附件先上传再提交**：如果反馈带附件，先调用 `uploadPublicFile()`，再把返回 URL 组装为 `Attachment` 随反馈提交。
 9. **发布前关闭 debug**：生产环境建议 `debug: false`，避免输出请求参数、签名串和接口日志。
 
 示例：
 
 ```dart
 Future<void> initFeedMatter(AppUser? user) async {
-  FeedMatterClient.instance.init(
+  await FeedMatterClient.instance.initialize(
     FeedMatterConfig(
       baseUrl: 'https://fmapi.litangkj.com',
       apiKey: 'your-api-key',
@@ -164,14 +176,61 @@ Future<void> initFeedMatter(AppUser? user) async {
       appMarket: detectAppMarket(), // 例如 appstore / harmony / xiaomi
       debug: false,
     ),
-    FeedMatterUser(
-      userId: user?.id ?? '',
-      userName: user?.name ?? '',
-      userAvatar: user?.avatar,
-    ),
+    user: user == null
+        ? null
+        : FeedMatterUser(
+            userId: user.id,
+            userName: user.name,
+            userAvatar: user.avatar,
+          ),
   );
 }
 ```
+
+### 1.1 匿名身份与登录合并（必读）
+
+`initialize(...)` 用于配置 FeedMatter 项目，`setUser(...)` 和 `clearUser()` 用于改变当前身份：
+
+```dart
+final client = FeedMatterClient.instance;
+
+// 1. 未登录启动
+await client.initialize(config);
+
+// 2. 用户登录
+client.setUser(
+  FeedMatterUser(
+    userId: account.id, // 必须是长期稳定的业务用户 ID
+    userName: account.name,
+    userAvatar: account.avatar,
+  ),
+);
+
+// 3. 账号 A 切换到账号 B
+client.setUser(
+  FeedMatterUser(
+    userId: accountB.id,
+    userName: accountB.name,
+    userAvatar: accountB.avatar,
+  ),
+);
+
+// 4. 退出登录
+client.clearUser();
+```
+
+登录后的第一次反馈相关请求会同时携带注册用户 ID 和当前匿名安装 ID。服务端会一次性把匿名反馈、评论和点赞迁移到注册用户，确认后 SDK 不再发送该匿名 ID。
+
+参与身份合并的请求包括反馈列表、反馈详情、我的反馈、创建反馈、评论、回复和点赞。FAQ、项目配置和文件上传不会触发身份合并，也不会阻塞退出登录。
+
+接入限制：
+
+- 不要在登录态变化时重复调用 `initialize(...)`。
+- 不要使用昵称、手机号或邮箱作为 `userId`，除非该值在业务系统中永久不变。
+- 不要自行生成、保存或同步 FeedMatter 匿名 ID。
+- 登录后的首次请求失败时不要清理 SDK；后续反馈请求会继续完成合并。
+- 业务账号退出成功时必须调用 `clearUser()`。
+- 旧版已登录 SDK 可以继续使用；依赖匿名反馈的旧版 SDK 必须升级到 3.0.0。
 
 提交反馈时附加业务上下文：
 
@@ -247,16 +306,65 @@ if (!projectConfig.guestCommentEnabled && currentUser == null) {
 | `maxAttachments` | 最大附件数量 |
 | `maxUploadFileSize` | 单个附件最大体积，默认 40MB |
 
+### 3. 常见问题 FAQ
+
+常见问题适合放在反馈入口的前置位置，用来减少重复反馈。后台维护 FAQ 内容后，客户端可以通过 `getFaqList()` 拉取并展示在“帮助与反馈”“提交反馈前”等页面。
+
+`getFaqList()` 支持版本检查。客户端第一次请求传默认版本 `"0"`；后续可以缓存上一次返回的 `version`，再把该版本传给服务端。如果服务端 FAQ 没有更新，会返回相同 `version` 且 `items` 为空，客户端可以继续使用本地缓存。
+
+```dart
+final response = await FeedMatterClient.instance.getFaqList();
+
+if (response.hasUpdate) {
+  // 保存 response.version 和 response.items 到本地缓存
+  setState(() {
+    faqItems = response.items;
+  });
+}
+```
+
+带本地缓存的典型写法：
+
+```dart
+Future<List<FaqItem>> loadFaqs() async {
+  final cachedVersion = await localStorage.getString('faq_version') ?? '0';
+  final cachedItems = await loadCachedFaqItems();
+
+  final response = await FeedMatterClient.instance.getFaqList(
+    version: cachedVersion,
+  );
+
+  if (!response.hasUpdate) {
+    return cachedItems;
+  }
+
+  await localStorage.setString('faq_version', response.version);
+  await saveCachedFaqItems(response.items);
+  return response.items;
+}
+```
+
+展示时建议：
+
+- 优先展示 `title`，点击后展开 `answer`。
+- 如果 `url` 不为空，可以跳转到业务帮助文档或外部说明页面。
+- `keywords` 可用于本地搜索。
+- `platforms` 可用于按当前平台过滤，例如只展示 Android / iOS 相关问题。
+- FAQ 不能替代反馈入口，建议在 FAQ 下方保留“没有解决？提交反馈”入口。
+
 ### 认证与签名
 
 SDK 与 `feedmatter-api` 对接时会自动添加以下请求头：
 
 - `X-API-Key`：项目 API Key。
-- `X-User-Id`：业务侧用户唯一 ID。
+- `X-User-Id`：业务侧用户唯一 ID（已登录时）。
 - `X-User-Name`：URL 编码后的用户名。
 - `X-User-Avatar`：URL 编码后的用户头像，可选。
+- `X-Anonymous-Id`：未登录，或登录后尚未完成合并时发送的安装匿名 ID。
 - `X-Timestamp`：毫秒时间戳。
 - `X-Signature`：使用 `apiSecret` 生成的 HMAC-SHA256 签名。
+
+合并成功时，服务端响应头会返回 `X-Anonymous-Claimed: true`，SDK 会自动停止继续发送该匿名 ID。
 
 签名规则与 `feedmatter-api` 保持一致：
 
@@ -270,9 +378,13 @@ METHOD + "\n" + PATH + "\n" + TIMESTAMP + "\n" + JSON_SORTED_PARAMS
 - JSON POST 请求使用请求体参数参与签名。
 - 文件上传请求使用空对象 `{}` 参与签名。
 - 生产环境不要开启 `debug`，避免在日志中输出请求详情。
-- 如果 `FeedMatterUser.userId` 为空字符串，服务端会按游客/未登录用户处理；是否允许发布反馈或评论取决于项目配置中的游客开关。
+- 未设置用户或 `FeedMatterUser.userId` 为空时，SDK 使用按 FeedMatter 项目隔离并持久化的随机匿名安装 ID。
+- Android 和 iOS 会校验当前安装标识；检测到系统备份恢复到其他安装后，将轮换匿名 ID，避免继承旧匿名反馈权限。
+- 登录后 SDK 会在合并完成前继续发送当前项目的匿名安装 ID，服务端据此一次性迁移匿名期间反馈的所有权。
+- 是否允许匿名用户发布反馈或评论取决于项目配置中的游客开关。
+- 完整生命周期与验收清单见 [客户端身份与匿名反馈合并](https://github.com/litangtech/FeedMatter/blob/main/docs/product/client-identity.md)。
 
-### 3. 提交反馈
+### 4. 提交反馈
 
 ```dart
 try {
@@ -289,7 +401,7 @@ try {
 }
 ```
 
-### 4. 反馈类型
+### 5. 反馈类型
 
 SDK 支持以下反馈类型：
 
@@ -310,7 +422,7 @@ enum FeedbackType {
 - 如果不指定类型，默认为 `other`
 - 普通用户使用 `notice` 类型会收到错误响应
 
-### 5. 设备信息
+### 6. 设备信息
 
 SDK 会自动收集以下设备信息：
 
@@ -329,7 +441,7 @@ class ClientInfo {
 
 这些信息会在提交反馈时自动附加，你不需要手动设置。
 
-### 6. 获取反馈列表
+### 7. 获取反馈列表
 
 ```dart
 // 获取所有反馈
@@ -345,7 +457,7 @@ final myFeedbacks = await client.getMyFeedbacks(
 );
 ```
 
-### 7. 评论楼中楼
+### 8. 评论楼中楼
 
 FeedMatter 推荐使用“楼中楼”模型展示评论，这是当前 SDK 的主推评论接入方式：
 
@@ -459,7 +571,7 @@ SDK 提供了安全的文件上传功能，包括以下特性：
 
 - 文件大小限制（默认最大 40MB）
 - 文件名安全处理
-- 支持公开和私密两种上传方式
+- 附件统一使用公开上传
 - RESTful API 路径：`/api/v2/upload`
 
 ### 上传公开文件
@@ -480,29 +592,10 @@ try {
 }
 ```
 
-### 上传私密文件
-
-私密文件需要通过签名 URL 访问：
-
-```dart
-try {
-  // 1. 上传文件，获取私密文件 key
-  final key = await client.uploadPrivateFile(File('path/to/private.pdf'));
-
-  // 2. 使用 key 获取签名访问 URL
-  final signedUrl = await client.getSignedUrl(key);
-  print('文件访问链接：$signedUrl');
-} catch (e) {
-  print('操作失败：$e');
-}
-```
-
 ### API 端点
 
 #### 文件上传
 - 上传公开文件：POST `/api/v2/upload/public`
-- 上传私密文件：POST `/api/v2/upload/private`。后端统一返回 `{ "url": "private-file-key" }`，SDK 会将其作为 key 返回。
-- 获取签名 URL：GET `/api/v2/upload/private/{key}`
 
 #### 项目配置
 - 获取项目配置：GET `/api/v2/projects/config`
@@ -518,7 +611,7 @@ try {
 - 获取回复列表（分页）：GET `/api/v2/feedbacks/comments/{mainCommentId}/replies`
 - 添加评论/回复：POST `/api/v2/feedbacks/{id}/comments`
 
-### 8. 项目回调
+### 9. 项目回调
 
 项目回调是 FeedMatter 服务端到业务方服务端的事件通知能力，**不是 Flutter SDK 在客户端直接接收回调**。Flutter SDK 提交反馈、评论、点赞等操作后，FeedMatter 服务端会根据项目回调配置，把对应事件推送到你配置的回调 URL。
 
@@ -547,7 +640,11 @@ try {
 | `comment.status_changed` | 评论状态变化 |
 | `comment.deleted` | 评论删除 |
 | `comment.pinned` / `comment.unpinned` | 评论置顶 / 取消置顶 |
+| `store_integration.sync_completed` | 商店评论渠道同步完成（需在渠道设置中订阅） |
+| `store_integration.sync_failed` | 商店评论渠道同步失败（需在渠道设置中订阅） |
 | `system.test` | 管理后台测试回调 |
+
+完整 Webhook 集成说明（事件列表、签名、JSON Schema、投递日志）：见仓库 [`docs/integration/callback-integration-guide.md`](https://github.com/litangtech/FeedMatter/blob/main/docs/integration/callback-integration-guide.md)。
 
 回调请求格式：
 
@@ -563,6 +660,7 @@ payload 示例：
 
 ```json
 {
+  "callbackVersion": 1,
   "eventId": "0f7d2b43-7c21-4b5d-9fd6-4a2b01f4b8e6",
   "projectId": "project-id",
   "eventType": "feedback.created",
@@ -618,9 +716,9 @@ SDK 定义了以下几种异常类型：
 1. 全局错误处理：
 
 ```dart
-client.init(
+await client.initialize(
   config,
-  user,
+  user: user,
   onError: (error) {
     if (error is FeedMatterAuthException) {
       // 处理认证错误
@@ -678,8 +776,9 @@ SDK 将这些业务规则校验错误统一标记为 `code: 'INVALID_STATE'`，�
 
 1. 初始化时机
 
-   - 建议在应用启动时进行初始化
+   - 建议在应用启动时调用 `initialize(...)`
    - 确保在使用 SDK 功能前完成初始化
+   - 登录态变化时只调用 `setUser(...)` / `clearUser()`，不要重复 `initialize(...)`
 
 2. 错误处理
 
@@ -687,10 +786,12 @@ SDK 将这些业务规则校验错误统一标记为 `code: 'INVALID_STATE'`，�
    - 对重要操作使用局部错误处理
    - 在 UI 层展示友好的错误提示
 
-3. 用户信息
+3. 用户信息与匿名身份
 
-   - 在用户登录后更新用户信息
-   - 在用户登出时调用 `clearUser()`
+   - `userId` 必须是业务系统中长期稳定的唯一 ID
+   - 在用户登录后调用 `setUser(...)`
+   - 在用户登出时调用 `clearUser()`，以便轮换已合并的匿名 ID
+   - 不要自行生成、保存或同步 FeedMatter 匿名 ID
 
 4. 调试模式
 
@@ -760,6 +861,30 @@ SDK 将这些业务规则校验错误统一标记为 `code: 'INVALID_STATE'`，�
 | commentMaxContentLength   | int     | 3000   | 评论最大内容长度           |
 | maxAttachments            | int     | 8      | 最大附件数量               |
 | maxUploadFileSize         | int     | 40MB   | 最大上传文件大小           |
+
+### FaqListResponse
+
+常见问题列表响应模型，由 `getFaqList()` 返回。
+
+| 字段      | 类型            | 说明                                                             |
+| --------- | --------------- | ---------------------------------------------------------------- |
+| version   | String          | 当前 FAQ 数据版本，客户端应缓存该值用于下次版本检查              |
+| items     | List<FaqItem>   | FAQ 列表；如果服务端数据未更新，该列表为空                       |
+| hasUpdate | bool            | 便捷 getter，`items` 非空时为 `true`，表示客户端应更新本地缓存    |
+
+### FaqItem
+
+单条常见问题模型。
+
+| 字段      | 类型          | 说明                                           |
+| --------- | ------------- | ---------------------------------------------- |
+| id        | String        | FAQ ID                                         |
+| title     | String        | 问题标题                                       |
+| answer    | String?       | 问题答案，可直接用于展开展示                   |
+| url       | String?       | 外部帮助文档链接，可用于跳转详情页             |
+| keywords  | String?       | 搜索关键词，可用于客户端本地过滤               |
+| platforms | List<String>? | 适用平台列表，例如 `android`、`ios`、`macos`   |
+| sortOrder | int           | 排序值，服务端返回时通常已按该值排序           |
 
 ## 响应格式
 
@@ -915,41 +1040,31 @@ SDK 会自动处理这种响应格式，提取 `data` 字段的内容，并处�
 
 ## 示例项目
 
-完整的示例项目请参考 [example](example) 目录。示例项目内置了一套可复制的反馈 UI，方便第三方 App 直接拷贝后按自己的设计规范调整。
+完整的示例项目请参考 [example](example) 目录，演示 SDK 初始化、主题设置与 `FeedMatterFeedbackEntry` 接入。
 
-### 可复制 UI 目录
+### UI 包（feedmatter_flutter_ui）
 
-```text
-example/lib/
-  main.dart
-  feedmatter_ui/
-    feedback_home_page.dart
-    feedback_submit_page.dart
-    feedback_detail_page.dart
-    feedmatter_ui_helpers.dart
-    widgets/
-      feedback_card.dart
-      comment_floor_card.dart
+若需要开箱即用的反馈界面（列表、提交、详情、评论、FAQ、主题定制），请使用同仓库下的 **`feedmatter_flutter_ui`** 包：
+
+```yaml
+dependencies:
+  feedmatter_flutter_sdk: ^3.0.0
+  feedmatter_flutter_ui: ^0.1.0
 ```
 
-这套 UI 覆盖：
+```dart
+import 'package:feedmatter_flutter_ui/feedmatter_flutter_ui.dart';
 
-- SDK 初始化和全局错误处理。
-- 进入反馈模块后读取 `getProjectConfig()`。
-- 根据项目配置展示反馈、评论、附件、游客权限等开关状态。
-- 反馈列表、关键词搜索、全部反馈 / 我的反馈切换。
-- 提交反馈，支持反馈类型选择、字数限制和附件入口预留。
-- 反馈详情展示。
-- 楼中楼评论展示、发表评论、回复主评论、加载更多回复。
-- 点赞反馈和下拉刷新。
+// 应用启动时初始化 FeedMatterClient（见上文「快速开始」）
 
-接入建议：
+FeedMatterThemeScope.push<void>(
+  context,
+  theme: const FeedMatterThemeOptions(mode: FeedMatterThemeMode.system),
+  child: const FeedMatterFeedbackEntry(),
+);
+```
 
-1. 复制 `example/lib/feedmatter_ui/` 到你的业务项目。
-2. 在业务 App 启动或用户信息加载完成后，参考 `example/lib/main.dart` 初始化 `FeedMatterClient`。
-3. 替换 `apiKey`、`apiSecret`、`appMarket` 和 `FeedMatterUser`。
-4. 根据你的设计系统修改 `feedback_card.dart`、`comment_floor_card.dart` 和页面样式。
-5. 如果需要附件上传，把你的文件选择器接到 `feedback_submit_page.dart` 中预留的按钮，然后调用 `uploadPublicFile()` 或 `uploadPrivateFile()`。
+> 完整 UI 接入、主题定制、`FeedMatterUiOptions` 与组件说明见 [feedmatter_flutter_ui README](packages/feedmatter_flutter_ui/README.md)。
 
 ## ActionCard 链接
 

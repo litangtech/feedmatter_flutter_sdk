@@ -633,13 +633,26 @@ class FeedMatterClient {
   }
 
   Future<File> _compressImage(File sourceFile) async {
+    // flutter_image_compress 没有 Windows / Linux 实现，调用会抛 UnimplementedError
+    if (Platform.isWindows || Platform.isLinux) {
+      return sourceFile;
+    }
+
     final newPath = "${sourceFile.path}_compress.jpg";
-    final result = await FlutterImageCompress.compressAndGetFile(
-      sourceFile.absolute.path,
-      newPath,
-      quality: 70,
-      format: CompressFormat.jpeg,
-    );
+    XFile? result;
+    try {
+      result = await FlutterImageCompress.compressAndGetFile(
+        sourceFile.absolute.path,
+        newPath,
+        quality: 70,
+        format: CompressFormat.jpeg,
+      );
+    } catch (e) {
+      if (config?.debug == true) {
+        _debugLog("FeedMatter compress image failed, upload original: $e");
+      }
+      return sourceFile;
+    }
 
     if (result == null) {
       return sourceFile;
@@ -694,16 +707,19 @@ class FeedMatterClient {
   }
 
   /// 上传公开文件
+  ///
+  /// [compress] 为 false 时不压缩图片，适用于调用方已自行压缩的场景
   Future<String> uploadPublicFile(
     File file, {
     int? maxSize,
+    bool compress = true,
   }) async {
     final requestUser = _user;
     final requestConfig = config;
     final requestDio = getDio();
     final requestIdentityVersion = _identityVersion;
     _validateFile(file, maxSize: maxSize ?? 40 * 1024 * 1024);
-    final compressFile = await _compressFile(file);
+    final compressFile = compress ? await _compressFile(file) : file;
 
     try {
       final fileName = _getSafeFileName(file.path);
@@ -740,16 +756,19 @@ class FeedMatterClient {
   }
 
   /// 上传私密文件
+  ///
+  /// [compress] 为 false 时不压缩图片，适用于调用方已自行压缩的场景
   Future<String> uploadPrivateFile(
     File file, {
     int? maxSize,
+    bool compress = true,
   }) async {
     final requestUser = _user;
     final requestConfig = config;
     final requestDio = getDio();
     final requestIdentityVersion = _identityVersion;
     _validateFile(file, maxSize: maxSize ?? 40 * 1024 * 1024);
-    final compressFile = await _compressFile(file);
+    final compressFile = compress ? await _compressFile(file) : file;
 
     try {
       final fileName = _getSafeFileName(file.path);

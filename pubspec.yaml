@@ -21,16 +21,17 @@ dependencies:
   json_annotation: ^4.8.1
   package_info_plus:
     git:
-      url: "https://gitcode.com/openharmony-sig/flutter_plus_plugins.git"
+      url: https://atomgit.com/CPF-Flutter/flutter_plus_plugins.git
       path: "packages/package_info_plus/package_info_plus"
   device_info_plus:
     git:
-      url: "https://gitcode.com/openharmony-sig/flutter_plus_plugins.git"
+      url: https://atomgit.com/CPF-Flutter/flutter_plus_plugins.git
       path: "packages/device_info_plus/device_info_plus"
+      ref: "device_info_plus-12.3.0-ohos-1.0.0"
   flutter_image_compress: ^2.3.0
   shared_preferences:
     git:
-      url: "https://gitcode.com/openharmony-sig/flutter_packages.git"
+      url: https://atomgit.com/CPF-Flutter/flutter_packages.git
       path: "packages/shared_preferences/shared_preferences"
   uuid: ^4.6.0
   crypto: ^3.0.3
